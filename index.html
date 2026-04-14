@@ -109,7 +109,7 @@
         </div>
 
         <div class="btn-group">
-            <button class="cancel-btn" onclick="showHome()">Cancel</button>
+            <button class="cancel-btn" onclick="cancelReview()">Cancel</button>
             <button onclick="calculateAndSave()">Save Review</button>
         </div>
     </div>
@@ -121,7 +121,7 @@
             <div class="detail-score" id="detailScore">10.0</div>
             <p style="font-weight: 600;">Overall Weighted Score</p>
         </div>
-        <button class="cancel-btn" style="margin-top: 20px;" onclick="showHome()">Back to Map</button>
+        <button class="cancel-btn" style="margin-top: 20px;" onclick="closeDetail()">Back to Map</button>
     </div>
 
 </div>
@@ -136,8 +136,19 @@
         document.getElementById('homeView').classList.add('active');
         document.getElementById('formView').classList.remove('active');
         document.getElementById('detailView').classList.remove('active');
-        document.getElementById('cafeSearch').value = ''; // Clear search
+        document.getElementById('cafeSearch').value = ''; 
         currentPlaceData = null;
+    }
+
+    function cancelReview() {
+        if (activeSearchMarker) activeSearchMarker.setMap(null); // Remove preview pin
+        showHome();
+        map.setZoom(13); // Zoom back out
+    }
+
+    function closeDetail() {
+        globalInfoWindow.close(); // Close map bubble
+        showHome();
     }
 
     function showForm(placeName) {
@@ -146,11 +157,8 @@
         document.getElementById('detailView').classList.remove('active');
         
         document.getElementById('formCafeName').innerText = placeName;
-        
-        // Set date to today by default
         document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
         
-        // Reset form inputs
         categories.forEach(cat => {
             document.getElementById(`${cat.id}-p1`).value = '';
             document.getElementById(`${cat.id}-p2`).value = '';
@@ -168,7 +176,6 @@
         
         document.getElementById('detailName').innerText = review.cafe;
         
-        // Format the date nicely
         const dateObj = new Date(review.date);
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('detailDate').innerText = dateObj.toLocaleDateString(undefined, options);
@@ -221,6 +228,8 @@
     let map;
     let markers = [];
     let currentPlaceData = null; 
+    let activeSearchMarker = null; // NEW: Temporary marker for searching
+    let globalInfoWindow; // NEW: Reusable info bubble
 
     function initMap() {
         const copenhagen = { lat: 55.6761, lng: 12.5683 };
@@ -234,11 +243,14 @@
             fullscreenControl: false
         });
 
+        globalInfoWindow = new google.maps.InfoWindow();
+
         const input = document.getElementById("cafeSearch");
         const autocomplete = new google.maps.places.Autocomplete(input);
         autocomplete.bindTo("bounds", map);
 
         autocomplete.addListener("place_changed", () => {
+            globalInfoWindow.close();
             const place = autocomplete.getPlace();
             if (!place.geometry || !place.geometry.location) return;
 
@@ -251,7 +263,15 @@
             map.setCenter(place.geometry.location);
             map.setZoom(16);
             
-            // Switch to the Add Review form
+            // NEW: Drop a temporary blue pin to show the user exactly what they selected
+            if (activeSearchMarker) activeSearchMarker.setMap(null);
+            activeSearchMarker = new google.maps.Marker({
+                map: map,
+                position: place.geometry.location,
+                animation: google.maps.Animation.DROP,
+                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' 
+            });
+
             showForm(place.name);
         });
 
@@ -263,7 +283,7 @@
 
         let sumWeighted = 0, sumWeights = 0;
         const hadCoffee = document.getElementById('hadCoffee').checked;
-        const selectedDate = document.getElementById('reviewDate').value; // Get the user's selected date
+        const selectedDate = document.getElementById('reviewDate').value; 
 
         categories.forEach(cat => {
             if (cat.id === 'coffee' && !hadCoffee) return;
@@ -281,18 +301,18 @@
             cafe: currentPlaceData.name, 
             lat: currentPlaceData.lat,
             lng: currentPlaceData.lng,
-            date: selectedDate, // Save the selected date
+            date: selectedDate, 
             score: finalWeighted 
         };
 
         let history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
         history.unshift(review);
-        
-        // Sort history by the actual selected date (newest first)
         history.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
         localStorage.setItem('bmoHistory', JSON.stringify(history));
         
+        // Clear the temporary search marker
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
+
         renderHistoryAndPins();
         showHome();
         map.setZoom(14);
@@ -307,11 +327,8 @@
         markers = [];
 
         history.forEach(item => {
-            // Render list item (clicking it also opens detail view and centers map)
             const div = document.createElement('div');
             div.className = 'history-item';
-            
-            // Format date for the tiny list
             const dateStr = new Date(item.date).toLocaleDateString();
             
             div.innerHTML = `
@@ -320,32 +337,40 @@
                 ✨ <strong>Score: ${item.score}/10</strong>
             `;
             
-            div.onclick = () => {
-                showDetail(item);
-                if (item.lat && item.lng) {
-                    map.setCenter({lat: item.lat, lng: item.lng});
-                    map.setZoom(16);
-                }
-            };
-            list.appendChild(div);
+            let currentMarker = null;
 
             // Render Map Pin
             if (item.lat && item.lng && map) {
-                const marker = new google.maps.Marker({
+                currentMarker = new google.maps.Marker({
                     position: { lat: item.lat, lng: item.lng },
                     map: map,
                     title: item.cafe,
                     animation: google.maps.Animation.DROP
                 });
                 
-                // When you click the map pin, open the detail view on the left!
-                marker.addListener("click", () => {
+                // Clicking the physical map pin
+                currentMarker.addListener("click", () => {
                     showDetail(item);
-                    map.setCenter(marker.getPosition());
+                    map.setCenter(currentMarker.getPosition());
+                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px;"><strong>${item.cafe}</strong><br>⭐ ${item.score}/10</div>`);
+                    globalInfoWindow.open(map, currentMarker);
                 });
 
-                markers.push(marker);
+                markers.push(currentMarker);
             }
+
+            // NEW: Clicking the list item triggers the map pin logic
+            div.onclick = () => {
+                showDetail(item);
+                if (item.lat && item.lng && currentMarker) {
+                    map.setCenter({lat: item.lat, lng: item.lng});
+                    map.setZoom(16);
+                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px;"><strong>${item.cafe}</strong><br>⭐ ${item.score}/10</div>`);
+                    globalInfoWindow.open(map, currentMarker);
+                }
+            };
+            
+            list.appendChild(div);
         });
     }
 </script>
