@@ -42,6 +42,11 @@
 
         <div id="categoriesContainer"></div>
 
+        <div class="input-group">
+            <label>Final Thoughts / Comments</label>
+            <textarea id="reviewComment" rows="3" placeholder="Any extra thoughts?"></textarea>
+        </div>
+
         <div class="coffee-toggle">
             <input type="checkbox" id="hadCoffee" onchange="toggleCoffee()">
             <label for="hadCoffee" style="margin:0;">We had coffee here! ☕</label>
@@ -64,6 +69,10 @@
             <div class="vs-badge" id="detailComparison">vs. Google: 4.5/5</div>
         </div>
 
+        <div id="detailCommentContainer" class="comment-display" style="display: none;">
+            "<span id="detailCommentText"></span>"
+        </div>
+
         <div class="google-info-card" style="padding: 15px;">
             <label style="margin-bottom: 10px;">Vibes & Photos</label>
             <div class="photo-gallery" id="detailPhotos"></div>
@@ -75,7 +84,6 @@
         </div>
         <button class="cancel-btn" style="margin-top: 10px;" onclick="closeDetail()">Back to Map</button>
     </div>
-</div>
 
 <div class="map-area">
     <div id="map"></div>
