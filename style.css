@@ -57,8 +57,6 @@ input[type="text"], input[type="date"], input[type="number"] {
 .category-header { font-size: 1.1em; font-weight: 700; margin-bottom: 12px; }
 .rating-row { display: flex; gap: 10px; margin-bottom: 12px; }
 .rating-input { flex: 1; display: flex; flex-direction: column; }
-.slider-group { margin-bottom: 10px; }
-.slider-group input[type="range"] { width: 100%; }
 
 .coffee-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-weight: bold; background: var(--card-bg); padding: 15px; border-radius: 15px; border: 2px solid var(--border); }
 
