@@ -73,6 +73,19 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
 .detail-score { font-size: 2.5em; font-weight: bold; color: var(--primary); margin: 5px 0; }
 .vs-badge { display: inline-block; background: #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; margin-bottom: 10px;}
 
+/* COMMENT BOX STYLES */
+.detail-comment-box {
+    background-color: var(--bg-color);
+    border-left: 4px solid var(--primary);
+    padding: 12px 15px;
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+    text-align: left;
+    font-size: 0.95em;
+    color: var(--text);
+    line-height: 1.4;
+}
+
 /* EDIT & DELETE BUTTONS */
 .action-btn-group { display: flex; gap: 10px; margin-top: 15px; }
 .action-btn-group button { padding: 12px; font-size: 1em; }

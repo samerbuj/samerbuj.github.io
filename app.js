@@ -50,6 +50,9 @@ function showForm(placeData) {
     document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
     
+    // NEW: Clear the comment box
+    document.getElementById('reviewComment').value = '';
+    
     const photoGallery = document.getElementById('formPhotos');
     photoGallery.innerHTML = '';
     if (placeData.photos && placeData.photos.length > 0) {
@@ -81,6 +84,15 @@ function showDetail(review, index) {
     
     document.getElementById('detailScore').innerText = review.score;
     document.getElementById('detailComparison').innerText = `🌍 Google Users gave it: ${review.googleRating || 'N/A'}/5`;
+
+    // NEW: Handle the comment display
+    const commentSection = document.getElementById('detailCommentSection');
+    if (review.comment && review.comment.trim() !== "") {
+        commentSection.style.display = 'block';
+        document.getElementById('detailCommentText').innerText = review.comment;
+    } else {
+        commentSection.style.display = 'none';
+    }
 
     const detailPhotos = document.getElementById('detailPhotos');
     detailPhotos.innerHTML = '';
@@ -121,6 +133,9 @@ function openEditForm() {
     document.getElementById('formCafeName').innerText = review.cafe;
     document.getElementById('reviewDate').value = review.date;
     document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${review.googleRating || 'N/A'} / 5`;
+    
+    // NEW: Load existing comment into the text area
+    document.getElementById('reviewComment').value = review.comment || '';
     
     const photoGallery = document.getElementById('formPhotos');
     photoGallery.innerHTML = '';
@@ -240,6 +255,9 @@ function calculateAndSave() {
     const hadCoffee = document.getElementById('hadCoffee').checked;
     const selectedDate = document.getElementById('reviewDate').value; 
     
+    // NEW: Grab the comment
+    const commentText = document.getElementById('reviewComment').value;
+    
     const rawScores = {}; 
 
     categories.forEach(cat => {
@@ -247,14 +265,13 @@ function calculateAndSave() {
         const p1 = parseFloat(document.getElementById(`${cat.id}-p1`).value) || 0;
         const p2 = parseFloat(document.getElementById(`${cat.id}-p2`).value) || 0;
         
-        rawScores[cat.id] = { p1, p2 }; // Saves pure scores, no weights
+        rawScores[cat.id] = { p1, p2 }; 
         
         const catAvg = (p1 + p2) / 2;
         totalSum += catAvg;
         categoryCount++;
     });
 
-    // Simple unweighted average across all rated categories
     const finalScore = (categoryCount > 0) ? (totalSum / categoryCount).toFixed(1) : 0;
 
     const review = { 
@@ -265,7 +282,8 @@ function calculateAndSave() {
         score: finalScore,
         googleRating: currentPlaceData.googleRating, 
         photos: currentPlaceData.photos,
-        rawScores: rawScores 
+        rawScores: rawScores,
+        comment: commentText // NEW: Save the comment to the review object
     };
 
     let history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
