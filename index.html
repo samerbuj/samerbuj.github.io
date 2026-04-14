@@ -6,44 +6,42 @@
     <title>Our BMO Tracker 🥐🧀</title>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ... Keep all your previous CSS from the first version ... */
         :root {
-            --bg-color: #FFF8E7; 
+            --bg-color: #FFF8E7; /* Butter yellow */
             --card-bg: #FFFFFF;
-            --primary: #FFB347; 
-            --text: #5D4037; 
+            --primary: #FFB347; /* Warm cheese/orange */
+            --text: #5D4037; /* Dark brown bread crust */
             --border: #F0E6D2;
         }
 
+        /* Full screen layout */
         body {
             font-family: 'Quicksand', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text);
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            height: 100vh; /* Takes up 100% of the browser window height */
+            color: var(--text);
+            overflow: hidden; /* Prevents the whole page from scrolling */
         }
 
-        .container {
-            max-width: 600px;
-            width: 100%;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+        /* Left Side: 25% width, scrollable */
+        .sidebar {
+            width: 25%;
+            min-width: 320px; /* Prevents it from getting too skinny */
+            background-color: var(--bg-color);
+            padding: 25px;
+            overflow-y: auto; /* Allows scrolling inside the sidebar */
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05); /* Soft shadow separating sidebar from map */
+            z-index: 10;
+            box-sizing: border-box;
         }
 
-        /* NEW MAP STYLES */
-        #map-container {
-            width: 100%;
-            height: 300px;
-            border-radius: 15px;
-            border: 2px solid var(--border);
-            margin-bottom: 20px;
-            overflow: hidden;
-            display: none; /* Hidden until map loads */
+        /* Right Side: 75% width, contains the map */
+        .map-area {
+            flex-grow: 1;
+            background-color: #e5e3df; /* Default Google Maps background color */
+            position: relative;
         }
 
         #map {
@@ -51,34 +49,150 @@
             height: 100%;
         }
 
-        /* ... Include the rest of the CSS (inputs, buttons, cards, etc.) ... */
-        h1 { text-align: center; font-size: 2em; margin-bottom: 5px; }
-        p.subtitle { text-align: center; margin-top: 0; color: #8D6E63; margin-bottom: 30px; }
-        .input-group { margin-bottom: 20px; }
-        label { font-weight: 600; display: block; margin-bottom: 8px; }
-        input[type="text"], textarea { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 10px; font-family: inherit; box-sizing: border-box; }
-        .category-card { border: 2px solid var(--border); border-radius: 15px; padding: 15px; margin-bottom: 20px; background-color: #FAFAFA; }
-        .category-header { font-size: 1.2em; font-weight: 700; margin-bottom: 15px; }
-        .rating-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .rating-input { flex: 1; display: flex; flex-direction: column; }
-        .rating-input input[type="number"] { padding: 8px; border: 2px solid var(--border); border-radius: 8px; }
-        .slider-group { margin-bottom: 15px; }
-        .slider-group input[type="range"] { width: 100%; }
-        .coffee-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-weight: bold; }
-        button { background-color: var(--primary); color: white; border: none; padding: 15px 20px; border-radius: 12px; font-size: 1.1em; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; }
-        .history { margin-top: 40px; width: 100%; }
-        .history-item { background: var(--card-bg); border: 2px solid var(--border); padding: 15px; border-radius: 15px; margin-bottom: 10px; }
+        /* Typography and UI Elements */
+        h1 {
+            text-align: center;
+            font-size: 1.8em;
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            margin-top: 0;
+            color: #8D6E63;
+            margin-bottom: 25px;
+            font-size: 0.9em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .category-card {
+            border: 2px solid var(--border);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: var(--card-bg);
+        }
+
+        .category-header {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .rating-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .rating-input {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .rating-input input[type="number"] {
+            padding: 8px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .slider-group {
+            margin-bottom: 10px;
+        }
+
+        .slider-group input[type="range"] {
+            width: 100%;
+        }
+
+        .coffee-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid var(--border);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            font-family: inherit;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .history {
+            margin-top: 30px;
+            width: 100%;
+        }
+        
+        .history-item {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        /* Mobile responsiveness: stack them if the screen is too small */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                overflow: auto;
+            }
+            .sidebar {
+                width: 100%;
+                box-shadow: none;
+                order: 2; /* Put map on top on mobile */
+            }
+            .map-area {
+                width: 100%;
+                height: 50vh;
+                order: 1;
+            }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="sidebar">
     <h1>Our BMO Tracker 🥐🧀</h1>
     <p class="subtitle">The official Copenhagen café rating system</p>
-
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
 
     <div class="input-group">
         <label>Search for Café</label>
@@ -95,9 +209,13 @@
     <button onclick="calculateAndSave()">Save Review & Pin Map</button>
 
     <div class="history" id="history">
-        <h2>Past BMO Adventures 🗺️</h2>
+        <h2>Past Adventures 🗺️</h2>
         <div id="historyList"></div>
     </div>
+</div>
+
+<div class="map-area">
+    <div id="map"></div>
 </div>
 
 <script>
@@ -120,8 +238,14 @@
         div.innerHTML = `
             <div class="category-header"><span>${cat.icon} ${cat.name}</span></div>
             <div class="rating-row">
-                <div class="rating-input"><label>Your Score</label><input type="number" id="${cat.id}-p1" min="1" max="10"></div>
-                <div class="rating-input"><label>Partner Score</label><input type="number" id="${cat.id}-p2" min="1" max="10"></div>
+                <div class="rating-input">
+                    <label>Your Score</label>
+                    <input type="number" id="${cat.id}-p1" min="1" max="10">
+                </div>
+                <div class="rating-input">
+                    <label>Partner Score</label>
+                    <input type="number" id="${cat.id}-p2" min="1" max="10">
+                </div>
             </div>
             <div class="slider-group">
                 <label>Weight: <span id="${cat.id}-weight-val">Normal</span></label>
@@ -144,18 +268,23 @@
     // --- MAP LOGIC ---
     let map;
     let markers = [];
-    let currentPlaceData = null; // Stores lat/lng before saving
+    let currentPlaceData = null; 
 
     function initMap() {
-        document.getElementById('map-container').style.display = 'block';
-
         // Center on Copenhagen
         const copenhagen = { lat: 55.6761, lng: 12.5683 };
         
         map = new google.maps.Map(document.getElementById("map"), {
-            zoom: 12,
+            zoom: 13,
             center: copenhagen,
-            mapId: "DEMO_MAP_ID" // Can be customized in Google Cloud Console
+            mapId: "DEMO_MAP_ID",
+            disableDefaultUI: false, // Keeps zoom controls
+            zoomControl: true,
+            mapTypeControl: false,
+            scaleControl: true,
+            streetViewControl: false,
+            rotateControl: false,
+            fullscreenControl: false
         });
 
         // Setup Autocomplete
@@ -178,9 +307,9 @@
                 lng: place.geometry.location.lng()
             };
 
-            // Pan to the selected café
+            // Pan to the selected café and zoom in
             map.setCenter(place.geometry.location);
-            map.setZoom(15);
+            map.setZoom(16);
         });
 
         renderHistoryAndPins();
@@ -188,7 +317,7 @@
 
     function calculateAndSave() {
         if (!currentPlaceData) {
-            alert("Please search and select a café from the dropdown first!");
+            alert("Please search and select a café from the top search bar first!");
             return;
         }
 
@@ -219,10 +348,25 @@
         history.unshift(review);
         localStorage.setItem('bmoHistory', JSON.stringify(history));
         
-        currentPlaceData = null; // Reset
-        document.getElementById('cafeSearch').value = ''; // Clear search
+        // Reset form
+        currentPlaceData = null; 
+        document.getElementById('cafeSearch').value = ''; 
         
+        // Reset inputs to blank/default
+        categories.forEach(cat => {
+            document.getElementById(`${cat.id}-p1`).value = '';
+            document.getElementById(`${cat.id}-p2`).value = '';
+            document.getElementById(`${cat.id}-weight`).value = '3';
+            updateSliderLabel(cat.id);
+        });
+        document.getElementById('hadCoffee').checked = false;
+        toggleCoffee();
+
+        // Re-render
         renderHistoryAndPins();
+        
+        // Pan map slightly out to see context
+        map.setZoom(14);
     }
 
     function renderHistoryAndPins() {
@@ -235,10 +379,11 @@
         markers = [];
 
         history.forEach(item => {
-            // Add to list
+            // Add to list in sidebar
             list.innerHTML += `<div class="history-item">
-                <strong>${item.cafe}</strong> - ${item.date} <br>
-                ✨ Score: ${item.score}/10
+                <strong>${item.cafe}</strong> <br>
+                <span style="color: #8D6E63; font-size: 0.9em;">${item.date}</span> <br>
+                ✨ <strong>Score: ${item.score}/10</strong>
             </div>`;
 
             // Add pin to map
@@ -246,8 +391,18 @@
                 const marker = new google.maps.Marker({
                     position: { lat: item.lat, lng: item.lng },
                     map: map,
-                    title: `${item.cafe} (${item.score}/10)`
+                    title: `${item.cafe} (${item.score}/10)`,
+                    animation: google.maps.Animation.DROP
                 });
+                
+                // Add a little click window to the marker
+                const infowindow = new google.maps.InfoWindow({
+                    content: `<div><strong>${item.cafe}</strong><br>Score: ${item.score}/10</div>`
+                });
+                marker.addListener("click", () => {
+                    infowindow.open(map, marker);
+                });
+
                 markers.push(marker);
             }
         });
