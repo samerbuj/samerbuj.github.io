@@ -6,11 +6,12 @@
     <title>Our BMO Tracker 🥐🧀</title>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ... Keep all your previous CSS from the first version ... */
         :root {
-            --bg-color: #FFF8E7; /* Butter yellow */
+            --bg-color: #FFF8E7; 
             --card-bg: #FFFFFF;
-            --primary: #FFB347; /* Warm cheese/orange */
-            --text: #5D4037; /* Dark brown bread crust */
+            --primary: #FFB347; 
+            --text: #5D4037; 
             --border: #F0E6D2;
         }
 
@@ -34,135 +35,39 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.05);
         }
 
-        h1 {
-            text-align: center;
-            font-size: 2em;
-            margin-bottom: 5px;
-        }
-
-        p.subtitle {
-            text-align: center;
-            margin-top: 0;
-            color: #8D6E63;
-            margin-bottom: 30px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            font-weight: 600;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        input[type="text"], textarea {
+        /* NEW MAP STYLES */
+        #map-container {
             width: 100%;
-            padding: 10px;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            font-family: inherit;
-            box-sizing: border-box;
-        }
-
-        .category-card {
-            border: 2px solid var(--border);
+            height: 300px;
             border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            background-color: #FAFAFA;
-        }
-
-        .category-header {
-            font-size: 1.2em;
-            font-weight: 700;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .rating-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .rating-input {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .rating-input input[type="number"] {
-            padding: 8px;
             border: 2px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .slider-group {
-            margin-bottom: 15px;
-        }
-
-        .slider-group input[type="range"] {
-            width: 100%;
-        }
-
-        .coffee-toggle {
-            display: flex;
-            align-items: center;
-            gap: 10px;
             margin-bottom: 20px;
-            font-weight: bold;
+            overflow: hidden;
+            display: none; /* Hidden until map loads */
         }
 
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            border-radius: 12px;
-            font-size: 1.1em;
-            font-weight: 700;
-            cursor: pointer;
+        #map {
             width: 100%;
-            font-family: inherit;
-            transition: transform 0.1s;
+            height: 100%;
         }
 
-        button:active {
-            transform: scale(0.98);
-        }
-
-        .results {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: var(--bg-color);
-            border-radius: 15px;
-            display: none;
-        }
-
-        .score-box {
-            font-size: 1.5em;
-            font-weight: 700;
-            text-align: center;
-            margin: 10px 0;
-            color: var(--primary);
-        }
-
-        .history {
-            margin-top: 40px;
-            width: 100%;
-        }
-        
-        .history-item {
-            background: var(--card-bg);
-            border: 2px solid var(--border);
-            padding: 15px;
-            border-radius: 15px;
-            margin-bottom: 10px;
-        }
+        /* ... Include the rest of the CSS (inputs, buttons, cards, etc.) ... */
+        h1 { text-align: center; font-size: 2em; margin-bottom: 5px; }
+        p.subtitle { text-align: center; margin-top: 0; color: #8D6E63; margin-bottom: 30px; }
+        .input-group { margin-bottom: 20px; }
+        label { font-weight: 600; display: block; margin-bottom: 8px; }
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 10px; font-family: inherit; box-sizing: border-box; }
+        .category-card { border: 2px solid var(--border); border-radius: 15px; padding: 15px; margin-bottom: 20px; background-color: #FAFAFA; }
+        .category-header { font-size: 1.2em; font-weight: 700; margin-bottom: 15px; }
+        .rating-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .rating-input { flex: 1; display: flex; flex-direction: column; }
+        .rating-input input[type="number"] { padding: 8px; border: 2px solid var(--border); border-radius: 8px; }
+        .slider-group { margin-bottom: 15px; }
+        .slider-group input[type="range"] { width: 100%; }
+        .coffee-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-weight: bold; }
+        button { background-color: var(--primary); color: white; border: none; padding: 15px 20px; border-radius: 12px; font-size: 1.1em; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit; }
+        .history { margin-top: 40px; width: 100%; }
+        .history-item { background: var(--card-bg); border: 2px solid var(--border); padding: 15px; border-radius: 15px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -171,9 +76,13 @@
     <h1>Our BMO Tracker 🥐🧀</h1>
     <p class="subtitle">The official Copenhagen café rating system</p>
 
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
     <div class="input-group">
-        <label>Café Name</label>
-        <input type="text" id="cafeName" placeholder="e.g., Lille Bakery">
+        <label>Search for Café</label>
+        <input type="text" id="cafeSearch" placeholder="Start typing café name...">
     </div>
 
     <div id="categoriesContainer"></div>
@@ -183,14 +92,7 @@
         <label for="hadCoffee" style="margin:0;">We had coffee here! ☕</label>
     </div>
 
-    <button onclick="calculateAndSave()">Calculate & Save Rating</button>
-
-    <div class="results" id="results">
-        <h2 style="text-align: center; margin-top: 0;">Final Verdict 🏆</h2>
-        <div id="standardScore" class="score-box"></div>
-        <div id="coffeeScore" class="score-box" style="display:none;"></div>
-        <div id="weightedScore" class="score-box" style="color: #5D4037;"></div>
-    </div>
+    <button onclick="calculateAndSave()">Save Review & Pin Map</button>
 
     <div class="history" id="history">
         <h2>Past BMO Adventures 🗺️</h2>
@@ -199,6 +101,7 @@
 </div>
 
 <script>
+    // --- APP LOGIC ---
     const categories = [
         { id: 'bread', icon: '🍞', name: 'The Bread' },
         { id: 'cheese', icon: '🧀', name: 'The Cheese' },
@@ -207,7 +110,6 @@
         { id: 'coffee', icon: '☕', name: 'The Coffee', hiddenAtStart: true }
     ];
 
-    // Build the UI dynamically
     const container = document.getElementById('categoriesContainer');
     categories.forEach(cat => {
         const div = document.createElement('div');
@@ -216,25 +118,15 @@
         if (cat.hiddenAtStart) div.style.display = 'none';
 
         div.innerHTML = `
-            <div class="category-header">
-                <span>${cat.icon} ${cat.name}</span>
-            </div>
+            <div class="category-header"><span>${cat.icon} ${cat.name}</span></div>
             <div class="rating-row">
-                <div class="rating-input">
-                    <label>Your Score (1-10)</label>
-                    <input type="number" id="${cat.id}-p1" min="1" max="10">
-                </div>
-                <div class="rating-input">
-                    <label>Partner's Score (1-10)</label>
-                    <input type="number" id="${cat.id}-p2" min="1" max="10">
-                </div>
+                <div class="rating-input"><label>Your Score</label><input type="number" id="${cat.id}-p1" min="1" max="10"></div>
+                <div class="rating-input"><label>Partner Score</label><input type="number" id="${cat.id}-p2" min="1" max="10"></div>
             </div>
             <div class="slider-group">
-                <label>Importance Weight: <span id="${cat.id}-weight-val">Normal</span></label>
-                <input type="range" id="${cat.id}-weight" min="1" max="5" value="3" 
-                       oninput="updateSliderLabel('${cat.id}')">
+                <label>Weight: <span id="${cat.id}-weight-val">Normal</span></label>
+                <input type="range" id="${cat.id}-weight" min="1" max="5" value="3" oninput="updateSliderLabel('${cat.id}')">
             </div>
-            <textarea id="${cat.id}-comment" rows="2" placeholder="Thoughts on the ${cat.id}?"></textarea>
         `;
         container.appendChild(div);
     });
@@ -246,85 +138,123 @@
     }
 
     function toggleCoffee() {
-        const isChecked = document.getElementById('hadCoffee').checked;
-        document.getElementById('card-coffee').style.display = isChecked ? 'block' : 'none';
+        document.getElementById('card-coffee').style.display = document.getElementById('hadCoffee').checked ? 'block' : 'none';
+    }
+
+    // --- MAP LOGIC ---
+    let map;
+    let markers = [];
+    let currentPlaceData = null; // Stores lat/lng before saving
+
+    function initMap() {
+        document.getElementById('map-container').style.display = 'block';
+
+        // Center on Copenhagen
+        const copenhagen = { lat: 55.6761, lng: 12.5683 };
+        
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 12,
+            center: copenhagen,
+            mapId: "DEMO_MAP_ID" // Can be customized in Google Cloud Console
+        });
+
+        // Setup Autocomplete
+        const input = document.getElementById("cafeSearch");
+        const autocomplete = new google.maps.places.Autocomplete(input);
+        autocomplete.bindTo("bounds", map);
+
+        autocomplete.addListener("place_changed", () => {
+            const place = autocomplete.getPlace();
+            if (!place.geometry || !place.geometry.location) {
+                alert("No details available for input: '" + place.name + "'");
+                return;
+            }
+
+            // Save data temporarily to push into local storage when they hit 'Save'
+            currentPlaceData = {
+                name: place.name,
+                address: place.formatted_address,
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng()
+            };
+
+            // Pan to the selected café
+            map.setCenter(place.geometry.location);
+            map.setZoom(15);
+        });
+
+        renderHistoryAndPins();
     }
 
     function calculateAndSave() {
-        const cafeName = document.getElementById('cafeName').value || "Unknown Café";
-        const hadCoffee = document.getElementById('hadCoffee').checked;
-        
-        let sumUnweightedNoCoffee = 0;
-        let sumUnweightedWithCoffee = 0;
-        let sumWeighted = 0;
-        let sumWeights = 0;
-        
-        let countNoCoffee = 4; // Bread, cheese, place, price
-        let countWithCoffee = hadCoffee ? 5 : 4;
+        if (!currentPlaceData) {
+            alert("Please search and select a café from the dropdown first!");
+            return;
+        }
 
-        // Calculate averages
+        let sumWeighted = 0, sumWeights = 0;
+        const hadCoffee = document.getElementById('hadCoffee').checked;
+
         categories.forEach(cat => {
             if (cat.id === 'coffee' && !hadCoffee) return;
-
             const p1 = parseFloat(document.getElementById(`${cat.id}-p1`).value) || 0;
             const p2 = parseFloat(document.getElementById(`${cat.id}-p2`).value) || 0;
             const weight = parseFloat(document.getElementById(`${cat.id}-weight`).value) || 3;
-            
             const catAvg = (p1 + p2) / 2;
-
-            if (cat.id !== 'coffee') {
-                sumUnweightedNoCoffee += catAvg;
-            }
-            sumUnweightedWithCoffee += catAvg;
-            
             sumWeighted += (catAvg * weight);
             sumWeights += weight;
         });
 
-        const finalNoCoffee = (sumUnweightedNoCoffee / countNoCoffee).toFixed(1);
-        const finalWithCoffee = (sumUnweightedWithCoffee / countWithCoffee).toFixed(1);
         const finalWeighted = (sumWeighted / sumWeights).toFixed(1);
 
-        // Display results
-        const resDiv = document.getElementById('results');
-        resDiv.style.display = 'block';
-        
-        document.getElementById('standardScore').innerText = `Standard Rating (No Coffee): ${finalNoCoffee}/10`;
-        
-        const coffeeScoreEl = document.getElementById('coffeeScore');
-        if (hadCoffee) {
-            coffeeScoreEl.style.display = 'block';
-            coffeeScoreEl.innerText = `Standard Rating (With Coffee): ${finalWithCoffee}/10`;
-        } else {
-            coffeeScoreEl.style.display = 'none';
-        }
+        const review = { 
+            cafe: currentPlaceData.name, 
+            lat: currentPlaceData.lat,
+            lng: currentPlaceData.lng,
+            date: new Date().toLocaleDateString(), 
+            score: finalWeighted 
+        };
 
-        document.getElementById('weightedScore').innerText = `Weighted Average (Priority adjusted): ${finalWeighted}/10`;
-
-        // Save to Local Storage
-        const review = { cafe: cafeName, date: new Date().toLocaleDateString(), score: finalWeighted };
         let history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
-        history.unshift(review); // Add to beginning
+        history.unshift(review);
         localStorage.setItem('bmoHistory', JSON.stringify(history));
         
-        renderHistory();
+        currentPlaceData = null; // Reset
+        document.getElementById('cafeSearch').value = ''; // Clear search
+        
+        renderHistoryAndPins();
     }
 
-    function renderHistory() {
+    function renderHistoryAndPins() {
         const history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
         const list = document.getElementById('historyList');
         list.innerHTML = '';
+        
+        // Clear old markers
+        markers.forEach(marker => marker.setMap(null));
+        markers = [];
+
         history.forEach(item => {
+            // Add to list
             list.innerHTML += `<div class="history-item">
                 <strong>${item.cafe}</strong> - ${item.date} <br>
-                ✨ Weighted Score: ${item.score}/10
+                ✨ Score: ${item.score}/10
             </div>`;
+
+            // Add pin to map
+            if (item.lat && item.lng && map) {
+                const marker = new google.maps.Marker({
+                    position: { lat: item.lat, lng: item.lng },
+                    map: map,
+                    title: `${item.cafe} (${item.score}/10)`
+                });
+                markers.push(marker);
+            }
         });
     }
-
-    // Load history on start
-    renderHistory();
 </script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAxF46uw7iBJkVyUtMZ6oIyim5x1YlLLWc&libraries=places&callback=initMap" async defer></script>
 
 </body>
 </html>
