@@ -22,7 +22,7 @@
         }
 
         .sidebar {
-            width: 25%; min-width: 340px; background-color: var(--bg-color);
+            width: 30%; min-width: 360px; background-color: var(--bg-color);
             padding: 25px; overflow-y: auto; box-shadow: 4px 0 15px rgba(0,0,0,0.05);
             z-index: 10; box-sizing: border-box; display: flex; flex-direction: column;
         }
@@ -42,6 +42,25 @@
         input[type="text"], input[type="date"], input[type="number"] {
             width: 100%; padding: 10px; border: 2px solid var(--border);
             border-radius: 10px; font-family: inherit; box-sizing: border-box;
+        }
+
+        /* NEW: PHOTO GALLERY & RATINGS STYLES */
+        .google-info-card {
+            background: #fdfbf7; border: 2px dashed var(--border); 
+            border-radius: 12px; padding: 12px; margin-bottom: 20px;
+        }
+        .google-rating {
+            font-weight: bold; color: #E65100; font-size: 1.1em; margin-bottom: 10px;
+        }
+        .photo-gallery {
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px;
+        }
+        /* Cute custom scrollbar for the gallery */
+        .photo-gallery::-webkit-scrollbar { height: 6px; }
+        .photo-gallery::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        .photo-gallery img {
+            height: 90px; width: 90px; object-fit: cover; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;
         }
 
         /* FORM STYLES */
@@ -66,8 +85,9 @@
         .history-item { background: var(--card-bg); border: 2px solid var(--border); padding: 15px; border-radius: 15px; margin-bottom: 10px; font-size: 0.9em; cursor: pointer; transition: background 0.2s;}
         .history-item:hover { background: #fafafa; }
         
-        .detail-card { background: var(--card-bg); border: 2px solid var(--border); padding: 20px; border-radius: 15px; text-align: center;}
-        .detail-score { font-size: 2.5em; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .detail-card { background: var(--card-bg); border: 2px solid var(--border); padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px;}
+        .detail-score { font-size: 2.5em; font-weight: bold; color: var(--primary); margin: 5px 0; }
+        .vs-badge { display: inline-block; background: #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; margin-bottom: 10px;}
 
         @media (max-width: 768px) {
             body { flex-direction: column; overflow: auto; }
@@ -96,6 +116,11 @@
     <div id="formView" class="view-pane">
         <div class="selected-cafe-title" id="formCafeName">Café Name</div>
         
+        <div class="google-info-card">
+            <div class="google-rating" id="formGoogleRating">Google Rating: - / 5</div>
+            <div class="photo-gallery" id="formPhotos"></div>
+        </div>
+        
         <div class="input-group">
             <label>When did we go?</label>
             <input type="date" id="reviewDate">
@@ -116,12 +141,21 @@
 
     <div id="detailView" class="view-pane">
         <div class="detail-card">
-            <h2 id="detailName" style="margin-top:0;">Café Name</h2>
-            <p id="detailDate" style="color: var(--secondary);">Date</p>
+            <h2 id="detailName" style="margin-top:0; margin-bottom: 5px;">Café Name</h2>
+            <p id="detailDate" style="color: var(--secondary); margin-top: 0;">Date</p>
+            
+            <p style="font-weight: 600; margin-bottom: 0;">Our Score</p>
             <div class="detail-score" id="detailScore">10.0</div>
-            <p style="font-weight: 600;">Overall Weighted Score</p>
+            
+            <div class="vs-badge" id="detailComparison">vs. Google: 4.5/5</div>
         </div>
-        <button class="cancel-btn" style="margin-top: 20px;" onclick="closeDetail()">Back to Map</button>
+
+        <div class="google-info-card" style="padding: 15px;">
+            <label style="margin-bottom: 10px;">Vibes & Photos</label>
+            <div class="photo-gallery" id="detailPhotos"></div>
+        </div>
+
+        <button class="cancel-btn" style="margin-top: 10px;" onclick="closeDetail()">Back to Map</button>
     </div>
 
 </div>
@@ -141,23 +175,37 @@
     }
 
     function cancelReview() {
-        if (activeSearchMarker) activeSearchMarker.setMap(null); // Remove preview pin
+        if (activeSearchMarker) activeSearchMarker.setMap(null); 
         showHome();
-        map.setZoom(13); // Zoom back out
+        map.setZoom(13); 
     }
 
     function closeDetail() {
-        globalInfoWindow.close(); // Close map bubble
+        globalInfoWindow.close(); 
         showHome();
+        map.setZoom(13);
     }
 
-    function showForm(placeName) {
+    function showForm(placeData) {
         document.getElementById('homeView').classList.remove('active');
         document.getElementById('formView').classList.add('active');
         document.getElementById('detailView').classList.remove('active');
         
-        document.getElementById('formCafeName').innerText = placeName;
+        document.getElementById('formCafeName').innerText = placeData.name;
         document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
+        
+        // Populate Google Info
+        document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
+        
+        const photoGallery = document.getElementById('formPhotos');
+        photoGallery.innerHTML = '';
+        if (placeData.photos && placeData.photos.length > 0) {
+            placeData.photos.forEach(url => {
+                photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`;
+            });
+        } else {
+            photoGallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available</span>';
+        }
         
         categories.forEach(cat => {
             document.getElementById(`${cat.id}-p1`).value = '';
@@ -181,6 +229,18 @@
         document.getElementById('detailDate').innerText = dateObj.toLocaleDateString(undefined, options);
         
         document.getElementById('detailScore').innerText = review.score;
+        document.getElementById('detailComparison').innerText = `🌍 Google Users gave it: ${review.googleRating || 'N/A'}/5`;
+
+        // Populate Photos in Detail
+        const detailPhotos = document.getElementById('detailPhotos');
+        detailPhotos.innerHTML = '';
+        if (review.photos && review.photos.length > 0) {
+            review.photos.forEach(url => {
+                detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`;
+            });
+        } else {
+            detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos saved for this trip.</span>';
+        }
     }
 
 
@@ -228,8 +288,11 @@
     let map;
     let markers = [];
     let currentPlaceData = null; 
-    let activeSearchMarker = null; // NEW: Temporary marker for searching
-    let globalInfoWindow; // NEW: Reusable info bubble
+    let activeSearchMarker = null; 
+    let globalInfoWindow; 
+
+    // THE MAGIC BREAD EMOJI ICON
+    const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🍞</text></svg>`;
 
     function initMap() {
         const copenhagen = { lat: 55.6761, lng: 12.5683 };
@@ -248,31 +311,42 @@
         const input = document.getElementById("cafeSearch");
         const autocomplete = new google.maps.places.Autocomplete(input);
         autocomplete.bindTo("bounds", map);
+        
+        // NEW: Force Google to give us the rating and the photos!
+        autocomplete.setFields(["geometry", "name", "rating", "photos"]);
 
         autocomplete.addListener("place_changed", () => {
             globalInfoWindow.close();
             const place = autocomplete.getPlace();
             if (!place.geometry || !place.geometry.location) return;
 
+            // Extract up to 10 photos
+            let extractedPhotos = [];
+            if (place.photos) {
+                // Slice to max 10, then call getUrl to get the actual image link
+                extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getUrl({maxWidth: 400}));
+            }
+
             currentPlaceData = {
                 name: place.name,
                 lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng()
+                lng: place.geometry.location.lng(),
+                googleRating: place.rating || "N/A",
+                photos: extractedPhotos
             };
 
             map.setCenter(place.geometry.location);
             map.setZoom(16);
             
-            // NEW: Drop a temporary blue pin to show the user exactly what they selected
             if (activeSearchMarker) activeSearchMarker.setMap(null);
             activeSearchMarker = new google.maps.Marker({
                 map: map,
                 position: place.geometry.location,
                 animation: google.maps.Animation.DROP,
-                icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' 
+                icon: breadIconURL // Using the bread emoji!
             });
 
-            showForm(place.name);
+            showForm(currentPlaceData);
         });
 
         renderHistoryAndPins();
@@ -302,7 +376,9 @@
             lat: currentPlaceData.lat,
             lng: currentPlaceData.lng,
             date: selectedDate, 
-            score: finalWeighted 
+            score: finalWeighted,
+            googleRating: currentPlaceData.googleRating, // Save google's rating
+            photos: currentPlaceData.photos // Save the array of photo URLs
         };
 
         let history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
@@ -310,7 +386,6 @@
         history.sort((a, b) => new Date(b.date) - new Date(a.date));
         localStorage.setItem('bmoHistory', JSON.stringify(history));
         
-        // Clear the temporary search marker
         if (activeSearchMarker) activeSearchMarker.setMap(null);
 
         renderHistoryAndPins();
@@ -339,33 +414,31 @@
             
             let currentMarker = null;
 
-            // Render Map Pin
             if (item.lat && item.lng && map) {
                 currentMarker = new google.maps.Marker({
                     position: { lat: item.lat, lng: item.lng },
                     map: map,
                     title: item.cafe,
-                    animation: google.maps.Animation.DROP
+                    animation: google.maps.Animation.DROP,
+                    icon: breadIconURL // Using the bread emoji!
                 });
                 
-                // Clicking the physical map pin
                 currentMarker.addListener("click", () => {
                     showDetail(item);
                     map.setCenter(currentMarker.getPosition());
-                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px;"><strong>${item.cafe}</strong><br>⭐ ${item.score}/10</div>`);
+                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                     globalInfoWindow.open(map, currentMarker);
                 });
 
                 markers.push(currentMarker);
             }
 
-            // NEW: Clicking the list item triggers the map pin logic
             div.onclick = () => {
                 showDetail(item);
                 if (item.lat && item.lng && currentMarker) {
                     map.setCenter({lat: item.lat, lng: item.lng});
                     map.setZoom(16);
-                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px;"><strong>${item.cafe}</strong><br>⭐ ${item.score}/10</div>`);
+                    globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                     globalInfoWindow.open(map, currentMarker);
                 }
             };
