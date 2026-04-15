@@ -11,7 +11,8 @@ const db = getFirestore(app);
 // --- DYNAMICALLY LOAD GOOGLE MAPS ---
 function loadGoogleMaps() {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
+    // FIXED: Added &loading=async to the URL to satisfy the new Google standards
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&loading=async&callback=initMap`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
@@ -25,8 +26,7 @@ let activeSearchMarker = null;
 let globalInfoWindow; 
 let currentReviewId = null; 
 let globalHistory = []; 
-
-const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🥖</text></svg>`;
+let AdvancedMarkerElement; // NEW: Global reference for modern map pins
 
 // --- FETCH DATA FROM FIREBASE ---
 async function fetchReviews() {
@@ -48,13 +48,12 @@ window.showHome = function() {
     document.getElementById('homeView').classList.add('active');
     document.getElementById('formView').classList.remove('active');
     document.getElementById('detailView').classList.remove('active');
-    document.getElementById('cafeSearch').value = ''; 
     currentPlaceData = null;
     currentReviewId = null; 
 }
 
 window.cancelReview = function() {
-    if (activeSearchMarker) activeSearchMarker.setMap(null); 
+    if (activeSearchMarker) activeSearchMarker.map = null; 
     window.showHome();
     map.setZoom(13); 
 }
