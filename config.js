@@ -1,7 +1,7 @@
 window.CONFIG = {
     GOOGLE_MAPS_API_KEY: "AIzaSyAxF46uw7iBJkVyUtMZ6oIyim5x1YlLLWc",
     
-    FIREBASE_CONFIG = {
+    FIREBASE_CONFIG: {
         apiKey: "AIzaSyC5-Em_g4joTwydCiekxZ_rMTKYo4RNfKw",
         authDomain: "bmo-tracker-520bc.firebaseapp.com",
         projectId: "bmo-tracker-520bc",
