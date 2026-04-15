@@ -82,10 +82,20 @@ function showDetail(review, index) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('detailDate').innerText = dateObj.toLocaleDateString(undefined, options);
     
+    // Set main score
     document.getElementById('detailScore').innerText = review.score;
+    
+    // Handle secondary coffee score
+    const coffeeScoreEl = document.getElementById('detailCoffeeScore');
+    if (review.scoreWithCoffee) {
+        coffeeScoreEl.style.display = 'block';
+        coffeeScoreEl.innerHTML = `With Coffee: <span>${review.scoreWithCoffee}</span>/10 ☕`;
+    } else {
+        coffeeScoreEl.style.display = 'none';
+    }
+    
     document.getElementById('detailComparison').innerText = `🌍 Google Users gave it: ${review.googleRating || 'N/A'}/5`;
 
-    // NEW: Handle the comment display
     const commentSection = document.getElementById('detailCommentSection');
     if (review.comment && review.comment.trim() !== "") {
         commentSection.style.display = 'block';
@@ -274,40 +284,57 @@ window.initMap = function() {
 function calculateAndSave() {
     if (!currentPlaceData) return;
 
-    let totalSum = 0;
-    let categoryCount = 0;
+    let coreSum = 0;
+    let coreCount = 0;
+    let coffeeSum = 0;
+    
     const hadCoffee = document.getElementById('hadCoffee').checked;
     const selectedDate = document.getElementById('reviewDate').value; 
-    
-    // NEW: Grab the comment
     const commentText = document.getElementById('reviewComment').value;
-    
     const rawScores = {}; 
 
     categories.forEach(cat => {
-        if (cat.id === 'coffee' && !hadCoffee) return;
-        const p1 = parseFloat(document.getElementById(`${cat.id}-p1`).value) || 0;
-        const p2 = parseFloat(document.getElementById(`${cat.id}-p2`).value) || 0;
+        const p1Str = document.getElementById(`${cat.id}-p1`).value;
+        const p2Str = document.getElementById(`${cat.id}-p2`).value;
+        
+        // Skip coffee if checkbox is off, or if they checked it but left it completely blank
+        if (cat.id === 'coffee' && (!hadCoffee || (p1Str === '' && p2Str === ''))) return;
+
+        const p1 = parseFloat(p1Str) || 0;
+        const p2 = parseFloat(p2Str) || 0;
         
         rawScores[cat.id] = { p1, p2 }; 
-        
         const catAvg = (p1 + p2) / 2;
-        totalSum += catAvg;
-        categoryCount++;
+
+        if (cat.id === 'coffee') {
+            coffeeSum = catAvg; // Store coffee score separately
+        } else {
+            coreSum += catAvg; // Add to main core score
+            coreCount++;
+        }
     });
 
-    const finalScore = (categoryCount > 0) ? (totalSum / categoryCount).toFixed(1) : 0;
+    // The MAIN score is strictly the core food/vibe categories
+    const finalScore = (coreCount > 0) ? (coreSum / coreCount).toFixed(1) : 0;
+    
+    // The SECONDARY score includes everything
+    let finalScoreWithCoffee = null;
+    if (hadCoffee && rawScores['coffee']) {
+        finalScoreWithCoffee = ((coreSum + coffeeSum) / (coreCount + 1)).toFixed(1);
+    }
 
     const review = { 
         cafe: currentPlaceData.name, 
         lat: currentPlaceData.lat,
         lng: currentPlaceData.lng,
         date: selectedDate, 
-        score: finalScore,
+        score: finalScore, // Main Score
+        scoreWithCoffee: finalScoreWithCoffee, // Secondary Score
+        hadCoffee: hadCoffee,
         googleRating: currentPlaceData.googleRating, 
         photos: currentPlaceData.photos,
         rawScores: rawScores,
-        comment: commentText // NEW: Save the comment to the review object
+        comment: commentText 
     };
 
     let history = JSON.parse(localStorage.getItem('bmoHistory')) || [];
@@ -341,10 +368,13 @@ function renderHistoryAndPins() {
         div.className = 'history-item';
         const dateStr = new Date(item.date).toLocaleDateString();
         
+        // Add coffee tag if they had it
+        let extraScoreHtml = item.scoreWithCoffee ? `<br><span style="color: var(--secondary); font-size: 0.9em;">☕ With Coffee: ${item.scoreWithCoffee}/10</span>` : '';
+        
         div.innerHTML = `
             <strong>${item.cafe}</strong> <br>
             <span style="color: var(--secondary); font-size: 0.9em;">${dateStr}</span> <br>
-            ✨ <strong>Score: ${item.score}/10</strong>
+            ✨ <strong>Score: ${item.score}/10</strong> ${extraScoreHtml}
         `;
         
         let currentMarker = null;
@@ -358,10 +388,12 @@ function renderHistoryAndPins() {
                 icon: breadIconURL 
             });
             
+            let infoCoffeeStr = item.scoreWithCoffee ? `<br>☕: ${item.scoreWithCoffee}` : '';
+            
             currentMarker.addListener("click", () => {
                 showDetail(item, index); 
                 map.setCenter(currentMarker.getPosition());
-                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
+                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} ${infoCoffeeStr} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                 globalInfoWindow.open(map, currentMarker);
             });
 
