@@ -8,9 +8,10 @@ import {
 const app = initializeApp(window.CONFIG.FIREBASE_CONFIG);
 const db = getFirestore(app);
 
+// --- DYNAMICALLY LOAD GOOGLE MAPS ---
 function loadGoogleMaps() {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&loading=async&callback=initMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&loading=async&callback=initMap`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
@@ -22,90 +23,53 @@ let markers = [];
 let currentPlaceData = null; 
 let activeSearchMarker = null; 
 let globalInfoWindow; 
-let AdvancedMarkerElement; 
-
-// State Tracking
 let currentReviewId = null; 
-let currentWishlistId = null; 
-let convertingWishlistId = null; // Tracks if we are moving a place from Wishlist to Reviewed
 let globalHistory = []; 
-let globalWishlist = [];
 
 const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🥖</text></svg>`;
-const pinIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">📌</text></svg>`;
-
 
 // --- FETCH DATA FROM FIREBASE ---
-async function fetchAllData() {
+async function fetchReviews() {
     try {
-        // Fetch Reviews
-        const qHistory = query(collection(db, "bmo_reviews"), orderBy("date", "desc"));
-        const snapHistory = await getDocs(qHistory);
-        globalHistory = snapHistory.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Fetch Wishlist
-        const qWish = query(collection(db, "bmo_wishlist"), orderBy("addedAt", "desc"));
-        const snapWish = await getDocs(qWish);
-        globalWishlist = snapWish.docs.map(d => ({ id: d.id, ...d.data() }));
-
+        const q = query(collection(db, "bmo_reviews"), orderBy("date", "desc"));
+        const snapshot = await getDocs(q);
+        globalHistory = snapshot.docs.map(docSnapshot => ({
+            id: docSnapshot.id, 
+            ...docSnapshot.data()
+        }));
         renderHistoryAndPins();
     } catch (error) {
-        console.error("Error fetching data: ", error);
+        console.error("Error fetching reviews: ", error);
     }
 }
 
-// --- UI NAVIGATION & VIEW MANAGEMENT ---
-function hideAllViews() {
-    document.getElementById('homeView').classList.remove('active');
+// --- UI NAVIGATION LOGIC ---
+window.showHome = function() {
+    document.getElementById('homeView').classList.add('active');
     document.getElementById('formView').classList.remove('active');
     document.getElementById('detailView').classList.remove('active');
-    document.getElementById('choiceView').classList.remove('active');
-    document.getElementById('wishlistDetailView').classList.remove('active');
-}
-
-window.showHome = function() {
-    hideAllViews();
-    document.getElementById('homeView').classList.add('active');
+    document.getElementById('cafeSearch').value = ''; 
     currentPlaceData = null;
     currentReviewId = null; 
-    currentWishlistId = null;
 }
 
 window.cancelReview = function() {
-    if (activeSearchMarker) activeSearchMarker.map = null; 
-    convertingWishlistId = null; 
+    if (activeSearchMarker) activeSearchMarker.setMap(null); 
     window.showHome();
-    if(map) map.setZoom(13); 
+    map.setZoom(13); 
 }
 
 window.closeDetail = function() {
-    if(globalInfoWindow) globalInfoWindow.close(); 
+    globalInfoWindow.close(); 
     window.showHome();
-    if(map) map.setZoom(13);
-}
-
-// Shows the choice: Review or Wishlist?
-window.showChoice = function(placeData) {
-    hideAllViews();
-    document.getElementById('choiceView').classList.add('active');
-    
-    document.getElementById('choiceCafeName').innerText = placeData.name;
-    document.getElementById('choiceGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
-    
-    const photoGallery = document.getElementById('choicePhotos');
-    photoGallery.innerHTML = '';
-    if (placeData.photos && placeData.photos.length > 0) {
-        placeData.photos.forEach(url => photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    }
-}
-
-window.proceedToReview = function() {
-    showForm(currentPlaceData);
+    map.setZoom(13);
 }
 
 function showForm(placeData) {
-    hideAllViews();
+    currentReviewId = null; 
+    document.getElementById('homeView').classList.remove('active');
     document.getElementById('formView').classList.add('active');
+    document.getElementById('detailView').classList.remove('active');
     
     document.getElementById('formCafeName').innerText = placeData.name;
     document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
@@ -128,15 +92,19 @@ function showForm(placeData) {
     window.toggleCoffee();
 }
 
-window.showDetail = function(review) {
+function showDetail(review) {
     currentReviewId = review.id; 
-    hideAllViews();
+    
+    document.getElementById('homeView').classList.remove('active');
+    document.getElementById('formView').classList.remove('active');
     document.getElementById('detailView').classList.add('active');
     
     document.getElementById('detailName').innerText = review.cafe;
     
     const dateObj = new Date(review.date);
-    document.getElementById('detailDate').innerText = dateObj.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('detailDate').innerText = dateObj.toLocaleDateString(undefined, options);
+    
     document.getElementById('detailScore').innerText = review.score;
     
     const coffeeScoreEl = document.getElementById('detailCoffeeScore');
@@ -161,84 +129,21 @@ window.showDetail = function(review) {
     detailPhotos.innerHTML = '';
     if (review.photos && review.photos.length > 0) {
         review.photos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    }
-}
-
-window.showWishlistDetail = function(item) {
-    currentWishlistId = item.id;
-    hideAllViews();
-    document.getElementById('wishlistDetailView').classList.add('active');
-    
-    document.getElementById('wishlistDetailName').innerText = item.cafe;
-    
-    const detailPhotos = document.getElementById('wishlistDetailPhotos');
-    detailPhotos.innerHTML = '';
-    if (item.photos && item.photos.length > 0) {
-        item.photos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`);
     } else {
-        detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available.</span>';
+        detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos saved for this trip.</span>';
     }
 }
 
-
-// --- SAVE AND DELETE LOGIC ---
-window.saveToWishlist = async function() {
-    if (!currentPlaceData) return;
-    
-    const wishItem = {
-        cafe: currentPlaceData.name,
-        lat: currentPlaceData.lat,
-        lng: currentPlaceData.lng,
-        googleRating: currentPlaceData.googleRating,
-        photos: currentPlaceData.photos,
-        addedAt: new Date().toISOString()
-    };
-
-    try {
-        await addDoc(collection(db, "bmo_wishlist"), wishItem);
-        if (activeSearchMarker) activeSearchMarker.map = null;
-        window.showHome();
-        if(map) map.setZoom(14);
-        fetchAllData(); 
-    } catch (error) {
-        console.error("Error saving to wishlist: ", error);
-        alert("Failed to save.");
-    }
-}
-
-window.convertWishlistToReview = function() {
-    const item = globalWishlist.find(w => w.id === currentWishlistId);
-    currentPlaceData = {
-        name: item.cafe,
-        lat: item.lat,
-        lng: item.lng,
-        googleRating: item.googleRating,
-        photos: item.photos
-    };
-    convertingWishlistId = currentWishlistId; // Flag it so we delete it from wishlist upon saving
-    showForm(currentPlaceData);
-}
-
-window.deleteWishlistItem = async function() {
-    if(confirm("Remove this from your Want To Go list?")) {
-        try {
-            await deleteDoc(doc(db, "bmo_wishlist", currentWishlistId));
-            window.closeDetail();
-            fetchAllData(); 
-        } catch (error) {
-            console.error("Error deleting: ", error);
-        }
-    }
-}
-
+// --- EDIT & DELETE LOGIC ---
 window.deleteReview = async function() {
     if(confirm("Are you sure you want to delete this review? 🥺")) {
         try {
             await deleteDoc(doc(db, "bmo_reviews", currentReviewId));
             window.closeDetail();
-            fetchAllData(); 
+            fetchReviews(); 
         } catch (error) {
             console.error("Error deleting document: ", error);
+            alert("Failed to delete.");
         }
     }
 }
@@ -254,7 +159,8 @@ window.openEditForm = function() {
         photos: review.photos
     };
     
-    hideAllViews();
+    document.getElementById('homeView').classList.remove('active');
+    document.getElementById('detailView').classList.remove('active');
     document.getElementById('formView').classList.add('active');
     
     document.getElementById('formCafeName').innerText = review.cafe;
@@ -328,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     loadGoogleMaps();
-    fetchAllData(); 
+    fetchReviews(); 
 });
 
 window.toggleCoffee = function() {
@@ -342,15 +248,10 @@ window.toggleCoffee = function() {
 }
 
 // --- MAP & INIT LOGIC ---
-window.initMap = async function() {
+window.initMap = function() {
     const copenhagen = { lat: 55.6761, lng: 12.5683 };
     
-    const { Map } = await google.maps.importLibrary("maps");
-    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-    const markerLib = await google.maps.importLibrary("marker");
-    AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
-
-    map = new Map(document.getElementById("map"), {
+    map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
         center: copenhagen,
         mapId: "DEMO_MAP_ID",
@@ -360,52 +261,45 @@ window.initMap = async function() {
     });
 
     globalInfoWindow = new google.maps.InfoWindow();
+    const input = document.getElementById("cafeSearch");
+    const autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.bindTo("bounds", map);
+    autocomplete.setFields(["geometry", "name", "rating", "photos"]);
 
-    const autocomplete = new PlaceAutocompleteElement();
-    autocomplete.placeholder = "Search for a café! 🥐";
-    document.getElementById("searchContainer").appendChild(autocomplete);
-
-    autocomplete.addEventListener("gmp-placeselect", async (event) => {
+    autocomplete.addListener("place_changed", () => {
         globalInfoWindow.close();
-        const place = event.place;
-        
-        await place.fetchFields({ fields: ["displayName", "location", "rating", "photos"] });
-        if (!place.location) return;
+        const place = autocomplete.getPlace();
+        if (!place.geometry || !place.geometry.location) return;
 
         let extractedPhotos = [];
-        if (place.photos && place.photos.length > 0) {
-            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getURI({maxWidth: 400}));
+        if (place.photos) {
+            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getUrl({maxWidth: 400}));
         }
 
         currentPlaceData = {
-            name: place.displayName,
-            lat: place.location.lat(),
-            lng: place.location.lng(),
+            name: place.name,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
             googleRating: place.rating || "N/A",
             photos: extractedPhotos
         };
 
-        map.setCenter(place.location);
+        map.setCenter(place.geometry.location);
         map.setZoom(16);
         
-        if (activeSearchMarker) activeSearchMarker.map = null;
-        
-        const breadIcon = document.createElement("div");
-        breadIcon.innerHTML = "🥐";
-        breadIcon.style.fontSize = "28px";
-
-        activeSearchMarker = new AdvancedMarkerElement({
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
+        activeSearchMarker = new google.maps.Marker({
             map: map,
-            position: place.location,
-            content: breadIcon
+            position: place.geometry.location,
+            animation: google.maps.Animation.DROP,
+            icon: breadIconURL
         });
 
-        // NEW: Now routes to showChoice instead of showForm directly
-        window.showChoice(currentPlaceData);
+        showForm(currentPlaceData);
     });
 };
 
-// --- FINAL SAVE (CALCULATE) LOGIC ---
+// --- SAVE TO FIREBASE ---
 window.calculateAndSave = async function() {
     if (!currentPlaceData) return;
 
@@ -464,18 +358,12 @@ window.calculateAndSave = async function() {
             await updateDoc(doc(db, "bmo_reviews", currentReviewId), review);
         } else {
             await addDoc(collection(db, "bmo_reviews"), review);
-            
-            // NEW: If they were converting a wishlist item, delete it from the wishlist so it doesn't duplicate
-            if (convertingWishlistId) {
-                await deleteDoc(doc(db, "bmo_wishlist", convertingWishlistId));
-                convertingWishlistId = null; 
-            }
         }
         
-        if (activeSearchMarker) activeSearchMarker.map = null;
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
         window.showHome();
-        if(map) map.setZoom(14);
-        fetchAllData(); 
+        map.setZoom(14);
+        fetchReviews(); 
 
     } catch (error) {
         console.error("Error saving document: ", error);
@@ -483,61 +371,19 @@ window.calculateAndSave = async function() {
     }
 }
 
-// --- RENDER LISTS & PINS ---
+// --- RENDER FROM CLOUD DATA ---
 function renderHistoryAndPins() {
-    // 1. Clear everything
-    document.getElementById('wishlistList').innerHTML = '';
-    document.getElementById('historyList').innerHTML = '';
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
     
-    markers.forEach(marker => { if(marker) marker.map = null; });
+    markers.forEach(marker => marker.setMap(null));
     markers = [];
 
-    // 2. Render WISHLIST
-    globalWishlist.forEach((item) => {
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `<strong>${item.cafe}</strong> <br> <span style="color: var(--secondary); font-size: 0.9em;">📌 Want To Go</span>`;
-        
-        let currentMarker = null;
-
-        if (item.lat && item.lng && map && AdvancedMarkerElement) {
-            const pinIcon = document.createElement("div");
-            pinIcon.innerHTML = "📌";
-            pinIcon.style.fontSize = "24px";
-
-            currentMarker = new AdvancedMarkerElement({
-                position: { lat: item.lat, lng: item.lng },
-                map: map,
-                title: item.cafe,
-                content: pinIcon 
-            });
-            
-            currentMarker.addListener("click", () => {
-                window.showWishlistDetail(item); 
-                map.setCenter(currentMarker.position);
-                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>📌 Want to go</div>`);
-                globalInfoWindow.open(map, currentMarker);
-            });
-            markers.push(currentMarker);
-        }
-
-        div.onclick = () => {
-            window.showWishlistDetail(item); 
-            if (item.lat && item.lng && currentMarker) {
-                map.setCenter({lat: item.lat, lng: item.lng});
-                map.setZoom(16);
-                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>📌 Want to go</div>`);
-                globalInfoWindow.open(map, currentMarker);
-            }
-        };
-        document.getElementById('wishlistList').appendChild(div);
-    });
-
-    // 3. Render PAST ADVENTURES (Reviews)
     globalHistory.forEach((item) => { 
         const div = document.createElement('div');
         div.className = 'history-item';
         const dateStr = new Date(item.date).toLocaleDateString();
+        
         let extraScoreHtml = item.scoreWithCoffee ? `<br><span style="color: var(--secondary); font-size: 0.9em;">☕ With Coffee: ${item.scoreWithCoffee}/10</span>` : '';
         
         div.innerHTML = `
@@ -548,31 +394,29 @@ function renderHistoryAndPins() {
         
         let currentMarker = null;
 
-        if (item.lat && item.lng && map && AdvancedMarkerElement) {
-            const breadIcon = document.createElement("div");
-            breadIcon.innerHTML = "🥖";
-            breadIcon.style.fontSize = "28px";
-
-            currentMarker = new AdvancedMarkerElement({
+        if (item.lat && item.lng && map) {
+            currentMarker = new google.maps.Marker({
                 position: { lat: item.lat, lng: item.lng },
                 map: map,
                 title: item.cafe,
-                content: breadIcon 
+                animation: google.maps.Animation.DROP,
+                icon: breadIconURL 
             });
             
             let infoCoffeeStr = item.scoreWithCoffee ? `<br>☕: ${item.scoreWithCoffee}` : '';
             
             currentMarker.addListener("click", () => {
-                window.showDetail(item); 
-                map.setCenter(currentMarker.position);
+                showDetail(item); 
+                map.setCenter(currentMarker.getPosition());
                 globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} ${infoCoffeeStr} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                 globalInfoWindow.open(map, currentMarker);
             });
+
             markers.push(currentMarker);
         }
 
         div.onclick = () => {
-            window.showDetail(item); 
+            showDetail(item); 
             if (item.lat && item.lng && currentMarker) {
                 map.setCenter({lat: item.lat, lng: item.lng});
                 map.setZoom(16);
@@ -580,6 +424,7 @@ function renderHistoryAndPins() {
                 globalInfoWindow.open(map, currentMarker);
             }
         };
-        document.getElementById('historyList').appendChild(div);
+        
+        list.appendChild(div);
     });
 }
