@@ -125,8 +125,8 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     font-family: 'Quicksand', sans-serif;
     margin-top: 5px;
-    /* Google forces a weird top border, this overrides it */
-    border-top: 2px solid var(--border) !important; 
+    border-top: 2px solid var(--border) !important;
+    box-sizing: border-box !important; 
 }
 
 .pac-item {
