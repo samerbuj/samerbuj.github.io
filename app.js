@@ -11,7 +11,6 @@ const db = getFirestore(app);
 // --- DYNAMICALLY LOAD GOOGLE MAPS ---
 function loadGoogleMaps() {
     const script = document.createElement('script');
-    // FIXED: Added &loading=async to the URL to satisfy the new Google standards
     script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&loading=async&callback=initMap`;
     script.async = true;
     script.defer = true;
@@ -26,7 +25,7 @@ let activeSearchMarker = null;
 let globalInfoWindow; 
 let currentReviewId = null; 
 let globalHistory = []; 
-let AdvancedMarkerElement; // NEW: Global reference for modern map pins
+let AdvancedMarkerElement; // Global reference for modern map pins
 
 // --- FETCH DATA FROM FIREBASE ---
 async function fetchReviews() {
@@ -55,13 +54,13 @@ window.showHome = function() {
 window.cancelReview = function() {
     if (activeSearchMarker) activeSearchMarker.map = null; 
     window.showHome();
-    map.setZoom(13); 
+    if(map) map.setZoom(13); 
 }
 
 window.closeDetail = function() {
-    globalInfoWindow.close(); 
+    if(globalInfoWindow) globalInfoWindow.close(); 
     window.showHome();
-    map.setZoom(13);
+    if(map) map.setZoom(13);
 }
 
 function showForm(placeData) {
@@ -247,10 +246,15 @@ window.toggleCoffee = function() {
 }
 
 // --- MAP & INIT LOGIC ---
-window.initMap = function() {
+window.initMap = async function() {
     const copenhagen = { lat: 55.6761, lng: 12.5683 };
     
-    map = new google.maps.Map(document.getElementById("map"), {
+    const { Map } = await google.maps.importLibrary("maps");
+    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
+    const markerLib = await google.maps.importLibrary("marker");
+    AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
+
+    map = new Map(document.getElementById("map"), {
         zoom: 13,
         center: copenhagen,
         mapId: "DEMO_MAP_ID",
@@ -260,38 +264,43 @@ window.initMap = function() {
     });
 
     globalInfoWindow = new google.maps.InfoWindow();
-    const input = document.getElementById("cafeSearch");
-    const autocomplete = new google.maps.places.Autocomplete(input);
-    autocomplete.bindTo("bounds", map);
-    autocomplete.setFields(["geometry", "name", "rating", "photos"]);
 
-    autocomplete.addListener("place_changed", () => {
+    const autocomplete = new PlaceAutocompleteElement();
+    document.getElementById("searchContainer").appendChild(autocomplete);
+
+    autocomplete.addEventListener("gmp-placeselect", async (event) => {
         globalInfoWindow.close();
-        const place = autocomplete.getPlace();
-        if (!place.geometry || !place.geometry.location) return;
+        const place = event.place;
+        
+        await place.fetchFields({ fields: ["displayName", "location", "rating", "photos"] });
+        if (!place.location) return;
 
         let extractedPhotos = [];
-        if (place.photos) {
-            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getUrl({maxWidth: 400}));
+        if (place.photos && place.photos.length > 0) {
+            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getURI({maxWidth: 400}));
         }
 
         currentPlaceData = {
-            name: place.name,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
+            name: place.displayName,
+            lat: place.location.lat(),
+            lng: place.location.lng(),
             googleRating: place.rating || "N/A",
             photos: extractedPhotos
         };
 
-        map.setCenter(place.geometry.location);
+        map.setCenter(place.location);
         map.setZoom(16);
         
-        if (activeSearchMarker) activeSearchMarker.setMap(null);
-        activeSearchMarker = new google.maps.Marker({
+        if (activeSearchMarker) activeSearchMarker.map = null;
+        
+        const breadIcon = document.createElement("div");
+        breadIcon.innerHTML = "🥖";
+        breadIcon.style.fontSize = "28px";
+
+        activeSearchMarker = new AdvancedMarkerElement({
             map: map,
-            position: place.geometry.location,
-            animation: google.maps.Animation.DROP,
-            icon: breadIconURL
+            position: place.location,
+            content: breadIcon
         });
 
         showForm(currentPlaceData);
@@ -359,7 +368,7 @@ window.calculateAndSave = async function() {
             await addDoc(collection(db, "bmo_reviews"), review);
         }
         
-        if (activeSearchMarker) activeSearchMarker.setMap(null);
+        if (activeSearchMarker) activeSearchMarker.map = null;
         window.showHome();
         map.setZoom(14);
         fetchReviews(); 
@@ -375,7 +384,9 @@ function renderHistoryAndPins() {
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     
-    markers.forEach(marker => marker.setMap(null));
+    markers.forEach(marker => {
+        if(marker) marker.map = null;
+    });
     markers = [];
 
     globalHistory.forEach((item) => { 
@@ -393,20 +404,23 @@ function renderHistoryAndPins() {
         
         let currentMarker = null;
 
-        if (item.lat && item.lng && map) {
-            currentMarker = new google.maps.Marker({
+        if (item.lat && item.lng && map && AdvancedMarkerElement) {
+            const breadIcon = document.createElement("div");
+            breadIcon.innerHTML = "🥖";
+            breadIcon.style.fontSize = "28px";
+
+            currentMarker = new AdvancedMarkerElement({
                 position: { lat: item.lat, lng: item.lng },
                 map: map,
                 title: item.cafe,
-                animation: google.maps.Animation.DROP,
-                icon: breadIconURL 
+                content: breadIcon 
             });
             
             let infoCoffeeStr = item.scoreWithCoffee ? `<br>☕: ${item.scoreWithCoffee}` : '';
             
             currentMarker.addListener("click", () => {
                 showDetail(item); 
-                map.setCenter(currentMarker.getPosition());
+                map.setCenter(currentMarker.position);
                 globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} ${infoCoffeeStr} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                 globalInfoWindow.open(map, currentMarker);
             });
