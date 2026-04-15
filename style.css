@@ -118,37 +118,6 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
 .edit-btn { background-color: #81C784; } /* Soft green */
 .delete-btn { background-color: #E57373; } /* Soft red */
 
-/* --- GOOGLE MAPS AUTOCOMPLETE STYLING --- */
-
-/* Make sure the container takes up the full width */
-gmp-place-autocomplete {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* Style the actual input box inside the Google component */
-gmp-place-autocomplete::part(input) {
-    width: 100%;
-    padding: 10px 10px 10px 40px; /* Extra padding on the left so text doesn't overlap the search icon */
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    font-family: 'Quicksand', sans-serif;
-    box-sizing: border-box;
-    background-color: var(--card-bg); /* Forces it to be white! */
-    color: var(--text); /* Forces text to be your dark brown */
-    font-size: 16px; /* Good practice for mobile to prevent auto-zooming */
-}
-
-/* Let's make the little magnifying glass icon match your primary orange color! */
-gmp-place-autocomplete::part(search-icon) {
-    color: var(--primary); 
-}
-
-/* Optional: Style the clear "X" button if you type something and want to delete it */
-gmp-place-autocomplete::part(clear-button) {
-    color: var(--secondary);
-}
-
 @media (max-width: 768px) {
     body { flex-direction: column; overflow: auto; }
     .sidebar { width: 100%; order: 2; box-shadow: none;}

@@ -11,7 +11,7 @@ const db = getFirestore(app);
 // --- DYNAMICALLY LOAD GOOGLE MAPS ---
 function loadGoogleMaps() {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&loading=async&callback=initMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${window.CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
@@ -25,7 +25,8 @@ let activeSearchMarker = null;
 let globalInfoWindow; 
 let currentReviewId = null; 
 let globalHistory = []; 
-let AdvancedMarkerElement; // Global reference for modern map pins
+
+const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🥖</text></svg>`;
 
 // --- FETCH DATA FROM FIREBASE ---
 async function fetchReviews() {
@@ -47,20 +48,21 @@ window.showHome = function() {
     document.getElementById('homeView').classList.add('active');
     document.getElementById('formView').classList.remove('active');
     document.getElementById('detailView').classList.remove('active');
+    document.getElementById('cafeSearch').value = ''; 
     currentPlaceData = null;
     currentReviewId = null; 
 }
 
 window.cancelReview = function() {
-    if (activeSearchMarker) activeSearchMarker.map = null; 
+    if (activeSearchMarker) activeSearchMarker.setMap(null); 
     window.showHome();
-    if(map) map.setZoom(13); 
+    map.setZoom(13); 
 }
 
 window.closeDetail = function() {
-    if(globalInfoWindow) globalInfoWindow.close(); 
+    globalInfoWindow.close(); 
     window.showHome();
-    if(map) map.setZoom(13);
+    map.setZoom(13);
 }
 
 function showForm(placeData) {
@@ -246,15 +248,10 @@ window.toggleCoffee = function() {
 }
 
 // --- MAP & INIT LOGIC ---
-window.initMap = async function() {
+window.initMap = function() {
     const copenhagen = { lat: 55.6761, lng: 12.5683 };
     
-    const { Map } = await google.maps.importLibrary("maps");
-    const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
-    const markerLib = await google.maps.importLibrary("marker");
-    AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
-
-    map = new Map(document.getElementById("map"), {
+    map = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
         center: copenhagen,
         mapId: "DEMO_MAP_ID",
@@ -264,44 +261,38 @@ window.initMap = async function() {
     });
 
     globalInfoWindow = new google.maps.InfoWindow();
+    const input = document.getElementById("cafeSearch");
+    const autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.bindTo("bounds", map);
+    autocomplete.setFields(["geometry", "name", "rating", "photos"]);
 
-    const autocomplete = new PlaceAutocompleteElement();
-    autocomplete.placeholder = "Add a new place!";
-    document.getElementById("searchContainer").appendChild(autocomplete);
-
-    autocomplete.addEventListener("gmp-placeselect", async (event) => {
+    autocomplete.addListener("place_changed", () => {
         globalInfoWindow.close();
-        const place = event.place;
-        
-        await place.fetchFields({ fields: ["displayName", "location", "rating", "photos"] });
-        if (!place.location) return;
+        const place = autocomplete.getPlace();
+        if (!place.geometry || !place.geometry.location) return;
 
         let extractedPhotos = [];
-        if (place.photos && place.photos.length > 0) {
-            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getURI({maxWidth: 400}));
+        if (place.photos) {
+            extractedPhotos = place.photos.slice(0, 10).map(photo => photo.getUrl({maxWidth: 400}));
         }
 
         currentPlaceData = {
-            name: place.displayName,
-            lat: place.location.lat(),
-            lng: place.location.lng(),
+            name: place.name,
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
             googleRating: place.rating || "N/A",
             photos: extractedPhotos
         };
 
-        map.setCenter(place.location);
+        map.setCenter(place.geometry.location);
         map.setZoom(16);
         
-        if (activeSearchMarker) activeSearchMarker.map = null;
-        
-        const breadIcon = document.createElement("div");
-        breadIcon.innerHTML = "🥖";
-        breadIcon.style.fontSize = "28px";
-
-        activeSearchMarker = new AdvancedMarkerElement({
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
+        activeSearchMarker = new google.maps.Marker({
             map: map,
-            position: place.location,
-            content: breadIcon
+            position: place.geometry.location,
+            animation: google.maps.Animation.DROP,
+            icon: breadIconURL
         });
 
         showForm(currentPlaceData);
@@ -369,7 +360,7 @@ window.calculateAndSave = async function() {
             await addDoc(collection(db, "bmo_reviews"), review);
         }
         
-        if (activeSearchMarker) activeSearchMarker.map = null;
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
         window.showHome();
         map.setZoom(14);
         fetchReviews(); 
@@ -385,9 +376,7 @@ function renderHistoryAndPins() {
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     
-    markers.forEach(marker => {
-        if(marker) marker.map = null;
-    });
+    markers.forEach(marker => marker.setMap(null));
     markers = [];
 
     globalHistory.forEach((item) => { 
@@ -405,23 +394,20 @@ function renderHistoryAndPins() {
         
         let currentMarker = null;
 
-        if (item.lat && item.lng && map && AdvancedMarkerElement) {
-            const breadIcon = document.createElement("div");
-            breadIcon.innerHTML = "🥖";
-            breadIcon.style.fontSize = "28px";
-
-            currentMarker = new AdvancedMarkerElement({
+        if (item.lat && item.lng && map) {
+            currentMarker = new google.maps.Marker({
                 position: { lat: item.lat, lng: item.lng },
                 map: map,
                 title: item.cafe,
-                content: breadIcon 
+                animation: google.maps.Animation.DROP,
+                icon: breadIconURL 
             });
             
             let infoCoffeeStr = item.scoreWithCoffee ? `<br>☕: ${item.scoreWithCoffee}` : '';
             
             currentMarker.addListener("click", () => {
                 showDetail(item); 
-                map.setCenter(currentMarker.position);
+                map.setCenter(currentMarker.getPosition());
                 globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} ${infoCoffeeStr} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                 globalInfoWindow.open(map, currentMarker);
             });
