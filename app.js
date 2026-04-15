@@ -23,53 +23,88 @@ let markers = [];
 let currentPlaceData = null; 
 let activeSearchMarker = null; 
 let globalInfoWindow; 
+
+// State Tracking
 let currentReviewId = null; 
+let currentWishlistId = null; 
+let convertingWishlistId = null; 
 let globalHistory = []; 
+let globalWishlist = [];
 
 const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🥖</text></svg>`;
+const pinIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">📌</text></svg>`;
 
 // --- FETCH DATA FROM FIREBASE ---
-async function fetchReviews() {
+async function fetchAllData() {
     try {
-        const q = query(collection(db, "bmo_reviews"), orderBy("date", "desc"));
-        const snapshot = await getDocs(q);
-        globalHistory = snapshot.docs.map(docSnapshot => ({
-            id: docSnapshot.id, 
-            ...docSnapshot.data()
-        }));
+        const qHistory = query(collection(db, "bmo_reviews"), orderBy("date", "desc"));
+        const snapHistory = await getDocs(qHistory);
+        globalHistory = snapHistory.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const qWish = query(collection(db, "bmo_wishlist"), orderBy("addedAt", "desc"));
+        const snapWish = await getDocs(qWish);
+        globalWishlist = snapWish.docs.map(d => ({ id: d.id, ...d.data() }));
+
         renderHistoryAndPins();
     } catch (error) {
-        console.error("Error fetching reviews: ", error);
+        console.error("Error fetching data: ", error);
     }
 }
 
-// --- UI NAVIGATION LOGIC ---
-window.showHome = function() {
-    document.getElementById('homeView').classList.add('active');
+// --- UI NAVIGATION & VIEW MANAGEMENT ---
+function hideAllViews() {
+    document.getElementById('homeView').classList.remove('active');
     document.getElementById('formView').classList.remove('active');
     document.getElementById('detailView').classList.remove('active');
+    document.getElementById('choiceView').classList.remove('active');
+    document.getElementById('wishlistDetailView').classList.remove('active');
+}
+
+window.showHome = function() {
+    hideAllViews();
+    document.getElementById('homeView').classList.add('active');
     document.getElementById('cafeSearch').value = ''; 
     currentPlaceData = null;
     currentReviewId = null; 
+    currentWishlistId = null;
 }
 
 window.cancelReview = function() {
     if (activeSearchMarker) activeSearchMarker.setMap(null); 
+    convertingWishlistId = null;
     window.showHome();
-    map.setZoom(13); 
+    if(map) map.setZoom(13); 
 }
 
 window.closeDetail = function() {
-    globalInfoWindow.close(); 
+    if(globalInfoWindow) globalInfoWindow.close(); 
     window.showHome();
-    map.setZoom(13);
+    if(map) map.setZoom(13);
+}
+
+// NEW: Shows the choice menu when you search for a place
+window.showChoice = function(placeData) {
+    hideAllViews();
+    document.getElementById('choiceView').classList.add('active');
+    
+    document.getElementById('choiceCafeName').innerText = placeData.name;
+    document.getElementById('choiceGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
+    
+    const photoGallery = document.getElementById('choicePhotos');
+    photoGallery.innerHTML = '';
+    if (placeData.photos && placeData.photos.length > 0) {
+        placeData.photos.forEach(url => photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
+    }
+}
+
+window.proceedToReview = function() {
+    showForm(currentPlaceData);
 }
 
 function showForm(placeData) {
     currentReviewId = null; 
-    document.getElementById('homeView').classList.remove('active');
+    hideAllViews();
     document.getElementById('formView').classList.add('active');
-    document.getElementById('detailView').classList.remove('active');
     
     document.getElementById('formCafeName').innerText = placeData.name;
     document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
@@ -92,11 +127,10 @@ function showForm(placeData) {
     window.toggleCoffee();
 }
 
-function showDetail(review) {
+window.showDetail = function(review) {
     currentReviewId = review.id; 
     
-    document.getElementById('homeView').classList.remove('active');
-    document.getElementById('formView').classList.remove('active');
+    hideAllViews();
     document.getElementById('detailView').classList.add('active');
     
     document.getElementById('detailName').innerText = review.cafe;
@@ -134,13 +168,79 @@ function showDetail(review) {
     }
 }
 
-// --- EDIT & DELETE LOGIC ---
+// NEW: Show Wishlist Detail
+window.showWishlistDetail = function(item) {
+    currentWishlistId = item.id;
+    hideAllViews();
+    document.getElementById('wishlistDetailView').classList.add('active');
+    
+    document.getElementById('wishlistDetailName').innerText = item.cafe;
+    
+    const detailPhotos = document.getElementById('wishlistDetailPhotos');
+    detailPhotos.innerHTML = '';
+    if (item.photos && item.photos.length > 0) {
+        item.photos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`);
+    } else {
+        detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available.</span>';
+    }
+}
+
+// --- SAVE AND DELETE LOGIC ---
+window.saveToWishlist = async function() {
+    if (!currentPlaceData) return;
+    
+    const wishItem = {
+        cafe: currentPlaceData.name,
+        lat: currentPlaceData.lat,
+        lng: currentPlaceData.lng,
+        googleRating: currentPlaceData.googleRating,
+        photos: currentPlaceData.photos,
+        addedAt: new Date().toISOString()
+    };
+
+    try {
+        await addDoc(collection(db, "bmo_wishlist"), wishItem);
+        if (activeSearchMarker) activeSearchMarker.setMap(null);
+        window.showHome();
+        if(map) map.setZoom(14);
+        fetchAllData(); 
+    } catch (error) {
+        console.error("Error saving to wishlist: ", error);
+        alert("Failed to save.");
+    }
+}
+
+window.convertWishlistToReview = function() {
+    const item = globalWishlist.find(w => w.id === currentWishlistId);
+    currentPlaceData = {
+        name: item.cafe,
+        lat: item.lat,
+        lng: item.lng,
+        googleRating: item.googleRating,
+        photos: item.photos
+    };
+    convertingWishlistId = currentWishlistId; 
+    showForm(currentPlaceData);
+}
+
+window.deleteWishlistItem = async function() {
+    if(confirm("Remove this from your Want To Go list?")) {
+        try {
+            await deleteDoc(doc(db, "bmo_wishlist", currentWishlistId));
+            window.closeDetail();
+            fetchAllData(); 
+        } catch (error) {
+            console.error("Error deleting: ", error);
+        }
+    }
+}
+
 window.deleteReview = async function() {
     if(confirm("Are you sure you want to delete this review? 🥺")) {
         try {
             await deleteDoc(doc(db, "bmo_reviews", currentReviewId));
             window.closeDetail();
-            fetchReviews(); 
+            fetchAllData(); 
         } catch (error) {
             console.error("Error deleting document: ", error);
             alert("Failed to delete.");
@@ -159,8 +259,7 @@ window.openEditForm = function() {
         photos: review.photos
     };
     
-    document.getElementById('homeView').classList.remove('active');
-    document.getElementById('detailView').classList.remove('active');
+    hideAllViews();
     document.getElementById('formView').classList.add('active');
     
     document.getElementById('formCafeName').innerText = review.cafe;
@@ -234,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     loadGoogleMaps();
-    fetchReviews(); 
+    fetchAllData(); 
 });
 
 window.toggleCoffee = function() {
@@ -247,7 +346,7 @@ window.toggleCoffee = function() {
     }
 }
 
-// --- MAP & INIT LOGIC ---
+// --- MAP & INIT LOGIC (Classic Version) ---
 window.initMap = function() {
     const copenhagen = { lat: 55.6761, lng: 12.5683 };
     
@@ -295,7 +394,8 @@ window.initMap = function() {
             icon: breadIconURL
         });
 
-        showForm(currentPlaceData);
+        // Trigger the choice view!
+        window.showChoice(currentPlaceData);
     });
 };
 
@@ -358,12 +458,18 @@ window.calculateAndSave = async function() {
             await updateDoc(doc(db, "bmo_reviews", currentReviewId), review);
         } else {
             await addDoc(collection(db, "bmo_reviews"), review);
+            
+            // Delete from wishlist if it was converted
+            if (convertingWishlistId) {
+                await deleteDoc(doc(db, "bmo_wishlist", convertingWishlistId));
+                convertingWishlistId = null; 
+            }
         }
         
         if (activeSearchMarker) activeSearchMarker.setMap(null);
         window.showHome();
         map.setZoom(14);
-        fetchReviews(); 
+        fetchAllData(); 
 
     } catch (error) {
         console.error("Error saving document: ", error);
@@ -373,12 +479,50 @@ window.calculateAndSave = async function() {
 
 // --- RENDER FROM CLOUD DATA ---
 function renderHistoryAndPins() {
-    const list = document.getElementById('historyList');
-    list.innerHTML = '';
+    document.getElementById('wishlistList').innerHTML = '';
+    document.getElementById('historyList').innerHTML = '';
     
     markers.forEach(marker => marker.setMap(null));
     markers = [];
 
+    // Render Wishlist
+    globalWishlist.forEach((item) => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `<strong>${item.cafe}</strong> <br> <span style="color: var(--secondary); font-size: 0.9em;">📌 Want To Go</span>`;
+        
+        let currentMarker = null;
+
+        if (item.lat && item.lng && map) {
+            currentMarker = new google.maps.Marker({
+                position: { lat: item.lat, lng: item.lng },
+                map: map,
+                title: item.cafe,
+                icon: pinIconURL 
+            });
+            
+            currentMarker.addListener("click", () => {
+                window.showWishlistDetail(item); 
+                map.setCenter(currentMarker.getPosition());
+                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>📌 Want to go</div>`);
+                globalInfoWindow.open(map, currentMarker);
+            });
+            markers.push(currentMarker);
+        }
+
+        div.onclick = () => {
+            window.showWishlistDetail(item); 
+            if (item.lat && item.lng && currentMarker) {
+                map.setCenter({lat: item.lat, lng: item.lng});
+                map.setZoom(16);
+                globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>📌 Want to go</div>`);
+                globalInfoWindow.open(map, currentMarker);
+            }
+        };
+        document.getElementById('wishlistList').appendChild(div);
+    });
+
+    // Render Past Adventures
     globalHistory.forEach((item) => { 
         const div = document.createElement('div');
         div.className = 'history-item';
@@ -406,7 +550,7 @@ function renderHistoryAndPins() {
             let infoCoffeeStr = item.scoreWithCoffee ? `<br>☕: ${item.scoreWithCoffee}` : '';
             
             currentMarker.addListener("click", () => {
-                showDetail(item); 
+                window.showDetail(item); 
                 map.setCenter(currentMarker.getPosition());
                 globalInfoWindow.setContent(`<div style="font-family:'Quicksand'; padding:5px; text-align:center;"><strong>${item.cafe}</strong><br>Our ⭐: ${item.score} ${infoCoffeeStr} | Google ⭐: ${item.googleRating || 'N/A'}</div>`);
                 globalInfoWindow.open(map, currentMarker);
@@ -416,7 +560,7 @@ function renderHistoryAndPins() {
         }
 
         div.onclick = () => {
-            showDetail(item); 
+            window.showDetail(item); 
             if (item.lat && item.lng && currentMarker) {
                 map.setCenter({lat: item.lat, lng: item.lng});
                 map.setZoom(16);
@@ -425,6 +569,6 @@ function renderHistoryAndPins() {
             }
         };
         
-        list.appendChild(div);
+        document.getElementById('historyList').appendChild(div);
     });
 }

@@ -21,9 +21,29 @@
             <label>Add a new place!</label>
             <input type="text" id="cafeSearch" placeholder="Search for a café...">
         </div>
+        
         <div class="history">
+            <h2>Want To Go 📌</h2>
+            <div id="wishlistList"></div>
+        </div>
+
+        <div class="history" style="margin-top: 30px;">
             <h2>Past Adventures 🗺️</h2>
             <div id="historyList"></div>
+        </div>
+    </div>
+
+    <div id="choiceView" class="view-pane">
+        <h2 id="choiceCafeName" style="text-align:center; margin-top:0;">Café Name</h2>
+        <div class="google-info-card">
+            <div class="google-rating" id="choiceGoogleRating">Google Rating: - / 5</div>
+            <div class="photo-gallery" id="choicePhotos"></div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;">
+            <button onclick="proceedToReview()" style="background-color: var(--primary);">📝 Write a Review</button>
+            <button onclick="saveToWishlist()" style="background-color: #81C784;">📌 Add to 'Want To Go'</button>
+            <button class="cancel-btn" onclick="cancelReview()">Cancel</button>
         </div>
     </div>
 
@@ -50,6 +70,24 @@
         <div class="btn-group">
             <button class="cancel-btn" onclick="cancelReview()">Cancel</button>
             <button onclick="calculateAndSave()">Save Review</button>
+        </div>
+    </div>
+
+    <div id="wishlistDetailView" class="view-pane">
+        <div class="detail-card">
+            <h2 id="wishlistDetailName" style="margin-top:0; margin-bottom: 5px;">Café Name</h2>
+            <p style="color: var(--secondary); margin-top: 0;">Saved for later</p>
+        </div>
+
+        <div class="google-info-card" style="padding: 15px;">
+            <label style="margin-bottom: 10px;">Vibes & Photos</label>
+            <div class="photo-gallery" id="wishlistDetailPhotos"></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;">
+            <button onclick="convertWishlistToReview()" style="background-color: var(--primary);">📝 We went here! Rate it</button>
+            <button onclick="deleteWishlistItem()" class="cancel-btn" style="color: #E57373;">Remove from list</button>
+            <button class="cancel-btn" onclick="closeDetail()">Back to Map</button>
         </div>
     </div>
 
