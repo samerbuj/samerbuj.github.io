@@ -215,6 +215,30 @@ input[type="file"]::file-selector-button:active {
     color: var(--primary);
 }
 
+/* --- CUSTOM PHOTO PREVIEW & DELETE BUTTON --- */
+.preview-img-container {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.preview-img-container img {
+    height: 90px; width: 90px; object-fit: cover; border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: block;
+}
+.delete-photo-btn {
+    position: absolute;
+    top: -5px; right: -5px;
+    background-color: #E57373; color: white;
+    border-radius: 50%; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: none; padding: 0;
+    transition: transform 0.1s;
+}
+.delete-photo-btn:hover {
+    transform: scale(1.1);
+}
+
 @media (max-width: 768px) {
     body { flex-direction: column; overflow: auto; }
     .sidebar { width: 100%; order: 2; box-shadow: none;}

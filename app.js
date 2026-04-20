@@ -72,7 +72,8 @@ function compressImage(file) {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_SIZE = 800; 
+                // BUMPED RESOLUTION: 1080px max (looks great on phones/web)
+                const MAX_SIZE = 1080; 
                 let width = img.width;
                 let height = img.height;
 
@@ -88,7 +89,8 @@ function compressImage(file) {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+                // BUMPED QUALITY: 80% JPEG
+                resolve(canvas.toDataURL('image/jpeg', 0.8)); 
             }
         }
     });
@@ -99,24 +101,36 @@ window.handlePhotoUpload = async function(event) {
     if (!files || files.length === 0) return;
     
     const preview = document.getElementById('customPhotoPreview');
-    preview.innerHTML = '<span style="font-size: 0.85em; color: var(--primary);">Compressing photos... ⏳</span>';
+    // Just append a loading message so it doesn't delete the existing preview thumbnails
+    preview.innerHTML += '<span id="loadingMsg" style="font-size: 0.85em; color: var(--primary); margin-left: 10px;">Compressing... ⏳</span>';
     
-    currentCustomPhotos = []; 
+    // Notice we removed `currentCustomPhotos = [];`! It now appends.
 
     for (let file of files) {
         const compressedBase64 = await compressImage(file);
         currentCustomPhotos.push(compressedBase64);
     }
     
+    event.target.value = ''; // Reset the file input so you can select the same file again if needed
+    renderCustomPhotoPreview();
+}
+
+window.removeCustomPhoto = function(index) {
+    // Remove the specific photo from the array
+    currentCustomPhotos.splice(index, 1);
     renderCustomPhotoPreview();
 }
 
 function renderCustomPhotoPreview() {
     const preview = document.getElementById('customPhotoPreview');
     preview.innerHTML = '';
-    currentCustomPhotos.forEach(src => {
-        // NEW: Added onclick and pointer cursor class
-        preview.innerHTML += `<img src="${src}" alt="Our photo preview" onclick="openImageModal(this.src)">`;
+    currentCustomPhotos.forEach((src, index) => {
+        preview.innerHTML += `
+            <div class="preview-img-container">
+                <img src="${src}" alt="Our photo preview" onclick="openImageModal(this.src)">
+                <button class="delete-photo-btn" onclick="removeCustomPhoto(${index})" title="Remove photo">✕</button>
+            </div>
+        `;
     });
 }
 
