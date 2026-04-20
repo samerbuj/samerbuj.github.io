@@ -51,6 +51,35 @@ async function fetchAllData() {
     }
 }
 
+// --- NEW: DYNAMIC PHOTO LOADER ---
+// This guarantees photos never expire by fetching fresh ones using the Place ID!
+function loadFreshPhotos(placeId, containerId, fallbackPhotos) {
+    const gallery = document.getElementById(containerId);
+    gallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">Loading fresh photos... ⏳</span>';
+
+    if (placeId && map) {
+        const service = new google.maps.places.PlacesService(map);
+        service.getDetails({ placeId: placeId, fields: ['photos'] }, (place, status) => {
+            gallery.innerHTML = '';
+            if (status === google.maps.places.PlacesServiceStatus.OK && place.photos && place.photos.length > 0) {
+                place.photos.slice(0, 10).forEach(photo => {
+                    gallery.innerHTML += `<img src="${photo.getUrl({maxWidth: 400})}" alt="Cafe photo">`;
+                });
+            } else if (fallbackPhotos && fallbackPhotos.length > 0) {
+                fallbackPhotos.forEach(url => gallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
+            } else {
+                gallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available.</span>';
+            }
+        });
+    } else if (fallbackPhotos && fallbackPhotos.length > 0) {
+        // Fallback for old reviews that didn't save a placeId
+        gallery.innerHTML = '';
+        fallbackPhotos.forEach(url => gallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
+    } else {
+        gallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available.</span>';
+    }
+}
+
 // --- UI NAVIGATION & VIEW MANAGEMENT ---
 function hideAllViews() {
     document.getElementById('homeView').classList.remove('active');
@@ -82,7 +111,6 @@ window.closeDetail = function() {
     if(map) map.setZoom(13);
 }
 
-// NEW: Shows the choice menu when you search for a place
 window.showChoice = function(placeData) {
     hideAllViews();
     document.getElementById('choiceView').classList.add('active');
@@ -90,11 +118,7 @@ window.showChoice = function(placeData) {
     document.getElementById('choiceCafeName').innerText = placeData.name;
     document.getElementById('choiceGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
     
-    const photoGallery = document.getElementById('choicePhotos');
-    photoGallery.innerHTML = '';
-    if (placeData.photos && placeData.photos.length > 0) {
-        placeData.photos.forEach(url => photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    }
+    loadFreshPhotos(placeData.placeId, 'choicePhotos', placeData.photos);
 }
 
 window.proceedToReview = function() {
@@ -111,13 +135,7 @@ function showForm(placeData) {
     document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
     document.getElementById('reviewComment').value = '';
     
-    const photoGallery = document.getElementById('formPhotos');
-    photoGallery.innerHTML = '';
-    if (placeData.photos && placeData.photos.length > 0) {
-        placeData.photos.forEach(url => photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    } else {
-        photoGallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available</span>';
-    }
+    loadFreshPhotos(placeData.placeId, 'formPhotos', placeData.photos);
     
     categories.forEach(cat => {
         document.getElementById(`${cat.id}-p1`).value = '';
@@ -159,16 +177,9 @@ window.showDetail = function(review) {
         commentSection.style.display = 'none';
     }
 
-    const detailPhotos = document.getElementById('detailPhotos');
-    detailPhotos.innerHTML = '';
-    if (review.photos && review.photos.length > 0) {
-        review.photos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    } else {
-        detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos saved for this trip.</span>';
-    }
+    loadFreshPhotos(review.placeId, 'detailPhotos', review.photos);
 }
 
-// NEW: Show Wishlist Detail
 window.showWishlistDetail = function(item) {
     currentWishlistId = item.id;
     hideAllViews();
@@ -176,13 +187,7 @@ window.showWishlistDetail = function(item) {
     
     document.getElementById('wishlistDetailName').innerText = item.cafe;
     
-    const detailPhotos = document.getElementById('wishlistDetailPhotos');
-    detailPhotos.innerHTML = '';
-    if (item.photos && item.photos.length > 0) {
-        item.photos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    } else {
-        detailPhotos.innerHTML = '<span style="font-size: 0.8em; color: #888;">No photos available.</span>';
-    }
+    loadFreshPhotos(item.placeId, 'wishlistDetailPhotos', item.photos);
 }
 
 // --- SAVE AND DELETE LOGIC ---
@@ -191,6 +196,7 @@ window.saveToWishlist = async function() {
     
     const wishItem = {
         cafe: currentPlaceData.name,
+        placeId: currentPlaceData.placeId, // NEW: Save Google's exact ID
         lat: currentPlaceData.lat,
         lng: currentPlaceData.lng,
         googleRating: currentPlaceData.googleRating,
@@ -214,6 +220,7 @@ window.convertWishlistToReview = function() {
     const item = globalWishlist.find(w => w.id === currentWishlistId);
     currentPlaceData = {
         name: item.cafe,
+        placeId: item.placeId, // Carry over the ID
         lat: item.lat,
         lng: item.lng,
         googleRating: item.googleRating,
@@ -253,6 +260,7 @@ window.openEditForm = function() {
     
     currentPlaceData = {
         name: review.cafe,
+        placeId: review.placeId, 
         lat: review.lat,
         lng: review.lng,
         googleRating: review.googleRating,
@@ -267,11 +275,7 @@ window.openEditForm = function() {
     document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${review.googleRating || 'N/A'} / 5`;
     document.getElementById('reviewComment').value = review.comment || '';
     
-    const photoGallery = document.getElementById('formPhotos');
-    photoGallery.innerHTML = '';
-    if (review.photos && review.photos.length > 0) {
-        review.photos.forEach(url => photoGallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
-    }
+    loadFreshPhotos(review.placeId, 'formPhotos', review.photos);
     
     const hadCoffee = review.rawScores && review.rawScores['coffee'];
     document.getElementById('hadCoffee').checked = !!hadCoffee;
@@ -346,7 +350,7 @@ window.toggleCoffee = function() {
     }
 }
 
-// --- MAP & INIT LOGIC (Classic Version) ---
+// --- MAP & INIT LOGIC ---
 window.initMap = function() {
     const copenhagen = { lat: 55.6761, lng: 12.5683 };
     
@@ -363,7 +367,8 @@ window.initMap = function() {
     const input = document.getElementById("cafeSearch");
     const autocomplete = new google.maps.places.Autocomplete(input);
     autocomplete.bindTo("bounds", map);
-    autocomplete.setFields(["geometry", "name", "rating", "photos"]);
+    // NEW: Added 'place_id' to the fields we request from Google
+    autocomplete.setFields(["geometry", "name", "rating", "photos", "place_id"]);
 
     autocomplete.addListener("place_changed", () => {
         globalInfoWindow.close();
@@ -377,6 +382,7 @@ window.initMap = function() {
 
         currentPlaceData = {
             name: place.name,
+            placeId: place.place_id, // Save the ID securely
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
             googleRating: place.rating || "N/A",
@@ -394,7 +400,6 @@ window.initMap = function() {
             icon: breadIconURL
         });
 
-        // Trigger the choice view!
         window.showChoice(currentPlaceData);
     });
 };
@@ -441,6 +446,7 @@ window.calculateAndSave = async function() {
 
     const review = { 
         cafe: currentPlaceData.name, 
+        placeId: currentPlaceData.placeId, // Ensure it saves to database
         lat: currentPlaceData.lat,
         lng: currentPlaceData.lng,
         date: selectedDate, 
@@ -459,7 +465,6 @@ window.calculateAndSave = async function() {
         } else {
             await addDoc(collection(db, "bmo_reviews"), review);
             
-            // Delete from wishlist if it was converted
             if (convertingWishlistId) {
                 await deleteDoc(doc(db, "bmo_wishlist", convertingWishlistId));
                 convertingWishlistId = null; 
