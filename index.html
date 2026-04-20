@@ -63,6 +63,13 @@
         <div id="categoriesContainer"></div>
 
         <div class="input-group">
+            <label>Add our own photos! 📸 (Optional)</label>
+            <input type="file" id="photoUpload" accept="image/*" multiple onchange="handlePhotoUpload(event)">
+            <p style="font-size: 0.75em; margin: 5px 0 0 0; color: #888;">Note: Selecting new photos replaces the current ones.</p>
+            <div class="photo-gallery" id="customPhotoPreview" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="input-group">
             <label>Additional Comments (Optional)</label>
             <textarea id="reviewComment" rows="3" placeholder="Any extra thoughts on the vibe, the day, or the pigeon that stole a crumb?"></textarea>
         </div>

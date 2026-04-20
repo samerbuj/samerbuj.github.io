@@ -30,6 +30,7 @@ let currentWishlistId = null;
 let convertingWishlistId = null; 
 let globalHistory = []; 
 let globalWishlist = [];
+let currentCustomPhotos = []; // NEW: Holds your uploaded photos!
 
 const breadIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">🥖</text></svg>`;
 const pinIconURL = `data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="35" height="35"><text x="0" y="28" font-size="28">📌</text></svg>`;
@@ -51,8 +52,66 @@ async function fetchAllData() {
     }
 }
 
-// --- NEW: DYNAMIC PHOTO LOADER ---
-// This guarantees photos never expire by fetching fresh ones using the Place ID!
+// --- NEW: IMAGE COMPRESSOR & UPLOADER ---
+// Shrinks images so they fit securely in the database
+function compressImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 800; // Keeps file sizes very small!
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height && width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                } else if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                // Compress to 70% quality JPEG
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+            }
+        }
+    });
+}
+
+window.handlePhotoUpload = async function(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const preview = document.getElementById('customPhotoPreview');
+    preview.innerHTML = '<span style="font-size: 0.85em; color: var(--primary);">Compressing photos... ⏳</span>';
+    
+    currentCustomPhotos = []; // Reset array for new selections
+
+    for (let file of files) {
+        const compressedBase64 = await compressImage(file);
+        currentCustomPhotos.push(compressedBase64);
+    }
+    
+    renderCustomPhotoPreview();
+}
+
+function renderCustomPhotoPreview() {
+    const preview = document.getElementById('customPhotoPreview');
+    preview.innerHTML = '';
+    currentCustomPhotos.forEach(src => {
+        preview.innerHTML += `<img src="${src}" alt="Our photo preview">`;
+    });
+}
+
+// --- DYNAMIC PHOTO LOADER ---
 function loadFreshPhotos(placeId, containerId, fallbackPhotos) {
     const gallery = document.getElementById(containerId);
     gallery.innerHTML = '<span style="font-size: 0.8em; color: #888;">Loading fresh photos... ⏳</span>';
@@ -72,7 +131,6 @@ function loadFreshPhotos(placeId, containerId, fallbackPhotos) {
             }
         });
     } else if (fallbackPhotos && fallbackPhotos.length > 0) {
-        // Fallback for old reviews that didn't save a placeId
         gallery.innerHTML = '';
         fallbackPhotos.forEach(url => gallery.innerHTML += `<img src="${url}" alt="Cafe photo">`);
     } else {
@@ -135,6 +193,11 @@ function showForm(placeData) {
     document.getElementById('formGoogleRating').innerText = `🌍 Google Rating: ${placeData.googleRating} / 5`;
     document.getElementById('reviewComment').value = '';
     
+    // Reset custom photos
+    currentCustomPhotos = [];
+    document.getElementById('photoUpload').value = '';
+    document.getElementById('customPhotoPreview').innerHTML = '';
+    
     loadFreshPhotos(placeData.placeId, 'formPhotos', placeData.photos);
     
     categories.forEach(cat => {
@@ -177,7 +240,14 @@ window.showDetail = function(review) {
         commentSection.style.display = 'none';
     }
 
-    loadFreshPhotos(review.placeId, 'detailPhotos', review.photos);
+    // NEW: If you have your own photos, show them! Otherwise, pull Google's.
+    const detailPhotos = document.getElementById('detailPhotos');
+    if (review.customPhotos && review.customPhotos.length > 0) {
+        detailPhotos.innerHTML = '';
+        review.customPhotos.forEach(url => detailPhotos.innerHTML += `<img src="${url}" alt="Our photo">`);
+    } else {
+        loadFreshPhotos(review.placeId, 'detailPhotos', review.photos);
+    }
 }
 
 window.showWishlistDetail = function(item) {
@@ -196,7 +266,7 @@ window.saveToWishlist = async function() {
     
     const wishItem = {
         cafe: currentPlaceData.name,
-        placeId: currentPlaceData.placeId, // NEW: Save Google's exact ID
+        placeId: currentPlaceData.placeId, 
         lat: currentPlaceData.lat,
         lng: currentPlaceData.lng,
         googleRating: currentPlaceData.googleRating,
@@ -220,7 +290,7 @@ window.convertWishlistToReview = function() {
     const item = globalWishlist.find(w => w.id === currentWishlistId);
     currentPlaceData = {
         name: item.cafe,
-        placeId: item.placeId, // Carry over the ID
+        placeId: item.placeId,
         lat: item.lat,
         lng: item.lng,
         googleRating: item.googleRating,
@@ -276,6 +346,11 @@ window.openEditForm = function() {
     document.getElementById('reviewComment').value = review.comment || '';
     
     loadFreshPhotos(review.placeId, 'formPhotos', review.photos);
+    
+    // NEW: Load existing custom photos back into the form!
+    currentCustomPhotos = review.customPhotos ? [...review.customPhotos] : [];
+    document.getElementById('photoUpload').value = ''; // Reset file input text
+    renderCustomPhotoPreview();
     
     const hadCoffee = review.rawScores && review.rawScores['coffee'];
     document.getElementById('hadCoffee').checked = !!hadCoffee;
@@ -367,7 +442,6 @@ window.initMap = function() {
     const input = document.getElementById("cafeSearch");
     const autocomplete = new google.maps.places.Autocomplete(input);
     autocomplete.bindTo("bounds", map);
-    // NEW: Added 'place_id' to the fields we request from Google
     autocomplete.setFields(["geometry", "name", "rating", "photos", "place_id"]);
 
     autocomplete.addListener("place_changed", () => {
@@ -382,7 +456,7 @@ window.initMap = function() {
 
         currentPlaceData = {
             name: place.name,
-            placeId: place.place_id, // Save the ID securely
+            placeId: place.place_id, 
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
             googleRating: place.rating || "N/A",
@@ -446,7 +520,7 @@ window.calculateAndSave = async function() {
 
     const review = { 
         cafe: currentPlaceData.name, 
-        placeId: currentPlaceData.placeId, // Ensure it saves to database
+        placeId: currentPlaceData.placeId, 
         lat: currentPlaceData.lat,
         lng: currentPlaceData.lng,
         date: selectedDate, 
@@ -456,7 +530,8 @@ window.calculateAndSave = async function() {
         googleRating: currentPlaceData.googleRating, 
         photos: currentPlaceData.photos,
         rawScores: rawScores,
-        comment: commentText 
+        comment: commentText,
+        customPhotos: currentCustomPhotos // NEW: Save your custom photos!
     };
 
     try {

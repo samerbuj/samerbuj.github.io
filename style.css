@@ -151,6 +151,23 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
     display: none !important;
 }
 
+/* --- CUSTOM PHOTO UPLOAD STYLES --- */
+input[type="file"] {
+    width: 100%; padding: 10px; border: 2px dashed var(--border);
+    border-radius: 10px; font-family: inherit; box-sizing: border-box;
+    background-color: #fafafa; cursor: pointer; color: var(--text);
+}
+input[type="file"]::file-selector-button {
+    background-color: var(--primary);
+    color: white; border: none; padding: 8px 12px;
+    border-radius: 8px; cursor: pointer;
+    font-family: inherit; font-weight: bold; margin-right: 10px;
+    transition: transform 0.1s;
+}
+input[type="file"]::file-selector-button:active {
+    transform: scale(0.95);
+}
+
 @media (max-width: 768px) {
     body { flex-direction: column; overflow: auto; }
     .sidebar { width: 100%; order: 2; box-shadow: none;}
