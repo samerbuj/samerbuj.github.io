@@ -41,8 +41,8 @@
         </div>
         
         <div style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;">
-            <button onclick="proceedToReview()" style="background-color: var(--primary);">📝 Write a Review</button>
-            <button onclick="saveToWishlist()" style="background-color: #81C784;">📌 Add to 'Want To Go'</button>
+            <button onclick="proceedToReview()" style="background-color: var(--accept);">📝 Write a Review</button>
+            <button onclick="saveToWishlist()" style="background-color: var(--primary);">📌 Add to 'Want To Go'</button>
             <button class="cancel-btn" onclick="cancelReview()">Cancel</button>
         </div>
     </div>
@@ -75,7 +75,7 @@
         
         <div class="btn-group">
             <button class="cancel-btn" onclick="cancelReview()">Cancel</button>
-            <button onclick="calculateAndSave()">Save Review</button>
+            <button onclick="calculateAndSave()" style="background-color: var(--accept);">Save Review</button>
         </div>
     </div>
 
@@ -91,7 +91,7 @@
         </div>
 
         <div style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;">
-            <button onclick="convertWishlistToReview()" style="background-color: var(--primary);">📝 We went here! Rate it</button>
+            <button onclick="convertWishlistToReview()" style="background-color: var(--accept);">📝 We went here! Rate it</button>
             <button onclick="deleteWishlistItem()" class="cancel-btn" style="color: #E57373;">Remove from list</button>
             <button class="cancel-btn" onclick="closeDetail()">Back to Map</button>
         </div>

@@ -5,6 +5,8 @@
     --secondary: #8D6E63;
     --text: #5D4037; 
     --border: #F0E6D2;
+    --delete: #E57373;
+    --accept: #81C784;
 }
 
 body {
@@ -44,7 +46,9 @@ input[type="text"], input[type="date"], input[type="number"], textarea {
     font-weight: bold; color: #E65100; font-size: 1.1em; margin-bottom: 10px;
 }
 .photo-gallery {
-    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px;
+    display: flex; gap: 8px; overflow-x: auto; 
+    padding-top: 8px; /* NEW: Gives the red X room to breathe! */
+    padding-bottom: 5px;
 }
 .photo-gallery::-webkit-scrollbar { height: 6px; }
 .photo-gallery::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
@@ -115,8 +119,8 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
 /* EDIT & DELETE BUTTONS */
 .action-btn-group { display: flex; gap: 10px; margin-top: 15px; }
 .action-btn-group button { padding: 12px; font-size: 1em; }
-.edit-btn { background-color: #81C784; } /* Soft green */
-.delete-btn { background-color: #E57373; } /* Soft red */
+.edit-btn { background-color: var(--accept); } /* Soft green */
+.delete-btn { background-color: var(--delete); } /* Soft red */
 
 /* --- GOOGLE MAPS AUTOCOMPLETE DROPDOWN STYLING --- */
 .pac-container {
@@ -126,7 +130,8 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
     font-family: 'Quicksand', sans-serif;
     margin-top: 5px;
     border-top: 2px solid var(--border) !important;
-    box-sizing: border-box !important; 
+    box-sizing: content-box !important; 
+    margin-left: -2px;
 }
 
 .pac-item {
@@ -212,7 +217,7 @@ input[type="file"]::file-selector-button:active {
 }
 
 .close-modal:hover {
-    color: var(--primary);
+    color: var(--delete);
 }
 
 /* --- CUSTOM PHOTO PREVIEW & DELETE BUTTON --- */
@@ -228,7 +233,7 @@ input[type="file"]::file-selector-button:active {
 .delete-photo-btn {
     position: absolute;
     top: -5px; right: -5px;
-    background-color: #E57373; color: white;
+    background-color: var(--delete); color: white;
     border-radius: 50%; width: 22px; height: 22px;
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: bold; cursor: pointer;
