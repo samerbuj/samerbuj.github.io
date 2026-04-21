@@ -130,8 +130,10 @@ button.cancel-btn { background-color: #E0E0E0; color: var(--text); }
     font-family: 'Quicksand', sans-serif;
     margin-top: 5px;
     border-top: 2px solid var(--border) !important;
-    box-sizing: content-box !important; 
-    margin-left: -2px;
+    box-sizing: border-box !important; 
+    
+    width: var(--search-width) !important;
+    left: var(--search-left) !important;
 }
 
 .pac-item {

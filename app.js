@@ -464,6 +464,18 @@ window.initMap = function() {
 
     globalInfoWindow = new google.maps.InfoWindow();
     const input = document.getElementById("cafeSearch");
+
+    function forceDropdownMatch() {
+        const rect = input.getBoundingClientRect();
+        document.documentElement.style.setProperty('--search-width', `${rect.width}px`);
+        document.documentElement.style.setProperty('--search-left', `${rect.left}px`);
+    }
+    // Re-measure if the user resizes the window or clicks the search bar
+    window.addEventListener('resize', forceDropdownMatch);
+    input.addEventListener('input', forceDropdownMatch);
+    input.addEventListener('focus', forceDropdownMatch);
+    forceDropdownMatch(); // Run once immediately to set it up
+
     const autocomplete = new google.maps.places.Autocomplete(input);
     autocomplete.bindTo("bounds", map);
     autocomplete.setFields(["geometry", "name", "rating", "photos", "place_id"]);
